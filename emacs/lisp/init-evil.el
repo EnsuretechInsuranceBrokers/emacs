@@ -53,6 +53,8 @@
   (evil-define-key '(normal visual) 'global
     (kbd "C-;") #'avy-goto-char-timer      ; like flash.nvim / leap
     (kbd "gs")  #'avy-goto-char-timer)
+  ;; K: documentation from the language server / elisp, not man pages.
+  (setq evil-lookup-func (lambda () (call-interactively #'eldoc-doc-buffer)))
   (evil-ex-define-cmd "W" #'evil-write)    ; :W typo
   (evil-ex-define-cmd "Q" #'evil-quit))
 
