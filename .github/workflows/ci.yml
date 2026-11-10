@@ -62,17 +62,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: shellcheck
-<<<<<<< HEAD
         run: shellcheck -S warning setup.sh test/run.sh ../fedora-rice/rice.sh
-=======
-        run: shellcheck -S warning setup.sh test/run.sh
       - name: platform switch round trip
         run: |
           ./setup.sh --platform fedora && ./setup.sh --platform fedora   # twice: idempotent
           grep -q "^(setq my/platform 'fedora)" lisp/init-platform.el
           ./setup.sh --platform macos
           git diff --exit-code lisp/init-platform.el
->>>>>>> claude/relaxed-hawking-t327ph
       - name: setup.sh dry run
         run: ./setup.sh --dry-run -y --no-packages
       - name: fedora-rice/rice.sh dry run
