@@ -1,56 +1,46 @@
-;;; init-rexim.el --- rexim's (Tsoding's) Emacs habits -*- lexical-binding: t; -*-
+;;; init-workflow.el --- C mode choice, whitespace, paredit, small helpers -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; The ideas from github.com/rexim/dotfiles (.emacs, .emacs.rc/*.el),
-;; re-implemented here.  His dotfiles repo has no license, so no code is
-;; copied from it.  simpc-mode comes from its own MIT-licensed repo and
-;; lives in site-lisp/simpc-mode/ with its license.
-;;
-;; What you get, and where rexim has it:
-;;   simpc-mode for C/C++         .emacs "(require 'simpc-mode)"
-;;   whitespace-mode in code      .emacs rc/set-up-whitespace-handling
-;;   C-x C-g find file at point   misc-rc.el
-;;   C-c i m imenu                misc-rc.el
-;;   C-c m s / C-c m l magit      .emacs
-;;   C-c M-q unfill paragraph     misc-rc.el
-;;   C-c C-j eval-print (elisp)   .emacs
-;;   paredit in Lisp buffers      .emacs
-;;   timestamp, copy file name, rgrep the selection, transparency toggle
-;;   multiple-cursors, move-text, C-, duplicate, relative line numbers,
-;;   windmove on S-arrows, dired-x, ANSI colours in compile:
-;;     already in init-editing / init-navigation / init-compile.
+;; Workflow habits in the style of rexim/Tsoding streams, all written for
+;; this config (nothing copied):
+;;   fast-c-mode for huge C/C++ files   (lisp/fast-c-mode.el, our own)
+;;   whitespace-mode in code buffers    `my/whitespace-style'
+;;   paredit in Lisp buffers            `my/use-paredit'
+;;   C-x C-g find file at point, C-c i m imenu, C-c m s / C-c m l magit,
+;;   C-c M-q unfill paragraph, C-c C-j eval-print in elisp, C-c T timestamp,
+;;   C-c s search the selection, copy file/buffer name, transparency toggle.
 
 ;;; Code:
 
 (defcustom my/c-mode 'auto
   "Which major mode opens C and C++ files.
-`auto':  tree-sitter (or cc-mode) normally; simpc-mode for files bigger
-         than `my/c-big-file-size' (huge headers like sqlite3.c).
-`simpc': always simpc-mode, like rexim.  Fastest, simplest indentation.
-`cc':    never simpc-mode."
-  :type '(choice (const auto) (const simpc) (const cc)) :group 'my)
+`auto': tree-sitter (or cc-mode) normally; `fast-c-mode' for files bigger
+        than `my/c-big-file-size' (huge headers like sqlite3.c).
+`fast': always `fast-c-mode'.  Instant on any file, simpler than cc-mode.
+`cc':   never `fast-c-mode'."
+  :type '(choice (const auto) (const fast) (const cc)) :group 'my)
 
 (defcustom my/whitespace-style 'light
   "How much whitespace to draw in code buffers.
-`rexim': every space as a dot, tabs as arrows, trailing space (his style).
+`dots':  every space as a dot, tabs as arrows, trailing space (the
+         look from Tsoding's streams).
 `light': tabs, trailing space and blank lines at the ends of the file.
 nil:     nothing (trailing spaces are still highlighted in code)."
-  :type '(choice (const rexim) (const light) (const nil)) :group 'my)
+  :type '(choice (const dots) (const light) (const nil)) :group 'my)
 
 (defcustom my/use-paredit t
-  "Use paredit (structural editing) in Lisp buffers, like rexim."
+  "Use paredit (structural editing) in Lisp buffers."
   :type 'boolean :group 'my)
 
-;;;; simpc-mode: rexim's tiny, very fast C/C++ mode
-(add-to-list 'load-path (expand-file-name "site-lisp/simpc-mode" user-emacs-directory))
-(autoload 'simpc-mode "simpc-mode" "Simple, fast major mode for C/C++." t)
+;;;; C/C++: pick the mode per file
+(autoload 'fast-c-mode "fast-c-mode" "Small, fast major mode for C/C++." t)
 
 (defun my/c-auto-mode ()
   "Open a C/C++ file in the mode `my/c-mode' asks for."
   (interactive)
-  (if (or (eq my/c-mode 'simpc)
+  (if (or (memq my/c-mode '(fast simpc))   ; `simpc' = old name
           (and (eq my/c-mode 'auto) (my/big-buffer-p)))
-      (simpc-mode)
+      (fast-c-mode)
     (let ((base (if (eq (my/c-like-kind-from-name) 'c++) 'c++-mode 'c-mode)))
       ;; Respect tree-sitter remapping (c-mode -> c-ts-mode) when it's set up.
       (funcall (if (fboundp 'major-mode-remap)
@@ -62,23 +52,18 @@ nil:     nothing (trailing spaces are still highlighted in code)."
              '("\\.\\(?:[ch]\\|cc\\|cpp\\|cxx\\|c\\+\\+\\|hh\\|hpp\\|hxx\\|inl\\)\\'"
                . my/c-auto-mode))
 
-(add-hook 'simpc-mode-hook
-          (lambda ()
-            (setq-local comment-start "// "
-                        comment-end ""
-                        tab-width 4
-                        indent-tabs-mode nil)))
 
-;;;; Whitespace (rexim turns on whitespace-mode in every code buffer)
+;;;; Whitespace: show tabs and trailing space in code
 (defconst my/whitespace-styles
-  '((rexim . (face tabs spaces trailing space-before-tab newline indentation
+  '((dots . (face tabs spaces trailing space-before-tab newline indentation
               empty space-after-tab space-mark tab-mark))
     (light . (face tabs trailing space-before-tab empty tab-mark)))
   "Styles for `my/whitespace-style'.")
 
 (defun my/setup-whitespace ()
   "Turn on `whitespace-mode' with `my/whitespace-style'."
-  (when-let* ((style (alist-get my/whitespace-style my/whitespace-styles)))
+  (when-let* ((style (alist-get (if (eq my/whitespace-style 'rexim) 'dots my/whitespace-style)
+                                 my/whitespace-styles)))
     (unless (my/big-buffer-p)
       (setq-local whitespace-style style
                   show-trailing-whitespace nil)  ; whitespace-mode draws it
@@ -107,7 +92,7 @@ nil:     nothing (trailing spaces are still highlighted in code)."
           (lambda () (local-set-key (kbd "C-c C-j") #'eval-print-last-sexp)))
 (add-to-list 'auto-mode-alist '("Cask\\'" . emacs-lisp-mode))
 
-;;;; rexim's little helpers (own implementations)
+;;;; Small helpers
 (defun my/buffer-file-name ()
   "File name of this buffer, or the directory in dired."
   (if (derived-mode-p 'dired-mode) default-directory buffer-file-name))
@@ -167,14 +152,14 @@ nil:     nothing (trailing spaces are still highlighted in code)."
     (when (string-match-p "-autoloads\\.el" (buffer-name b))
       (kill-buffer b))))
 
-;;;; rexim's keys (where they don't clash with Emacs' own C-x p project keys)
+;;;; Keys for the helpers
 (keymap-global-set "C-x C-g" #'find-file-at-point)
 (keymap-global-set "C-c i m" #'consult-imenu)
 (keymap-global-set "C-c m s" #'magit-status)
 (keymap-global-set "C-c m l" #'magit-log)
 (keymap-global-set "C-c M-q" #'my/unfill-paragraph)
-(keymap-global-set "C-c T"   #'my/insert-timestamp)        ; rexim: C-x p d
-(keymap-global-set "C-c s"   #'my/search-selection)        ; rexim: C-x p s (rgrep)
+(keymap-global-set "C-c T"   #'my/insert-timestamp)
+(keymap-global-set "C-c s"   #'my/search-selection)
 
-(provide 'init-rexim)
-;;; init-rexim.el ends here
+(provide 'init-workflow)
+;;; init-workflow.el ends here

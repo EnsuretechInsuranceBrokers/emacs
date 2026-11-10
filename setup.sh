@@ -2,7 +2,7 @@
 # One-command Emacs setup.
 #
 #   ./setup.sh                 everything (Emacs, tools, font, language servers, config, packages)
-#   ./setup.sh --evil          same, with Vim keys + SPC leader
+#   ./setup.sh --emacs-keys    same, with plain Emacs keys instead of Vim keys
 #   ./setup.sh --minimal       Emacs + core tools + config only
 #   ./setup.sh --dry-run       print what would run, change nothing
 #   ./setup.sh --update        later: pull this repo + upgrade packages (with snapshot)
@@ -21,13 +21,13 @@ MIN_EMACS=29
 
 # ---------------------------------------------------------------- options
 DO_EMACS=1 DO_TOOLS=1 DO_FONT=1 DO_LSP=1 DO_PACKAGES=1
-EVIL=0 DAEMON=0 KEYBOARD=0 DRY=0 YES=0 MODE=install
+EMACS_KEYS=0 DAEMON=0 KEYBOARD=0 DRY=0 YES=0 MODE=install
 
 usage() {
   sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
   cat <<'EOF'
 Options:
-  --evil          Vim keys (evil) with a Doom-style SPC leader
+  --emacs-keys    plain Emacs keys instead of Vim keys (evil is the default)
   --minimal       skip font and language servers
   --no-emacs      don't install Emacs (use the one you have)
   --no-tools      don't install ripgrep, fd, compilers, cmake...
@@ -45,7 +45,8 @@ EOF
 
 for arg in "$@"; do
   case "$arg" in
-    --evil) EVIL=1 ;;
+    --evil) : ;;               # default now; kept so old commands still work
+    --emacs-keys) EMACS_KEYS=1 ;;
     --minimal) DO_FONT=0 DO_LSP=0 ;;
     --no-emacs) DO_EMACS=0 ;;
     --no-tools) DO_TOOLS=0 ;;
@@ -321,10 +322,10 @@ fi
 if [ ! -f "$REPO/personal.el" ]; then
   run cp "$REPO/personal.example.el" "$REPO/personal.el"
 fi
-if [ "$EVIL" = 1 ] && ! grep -q '^(setq my/use-evil t)' "$REPO/personal.el" 2>/dev/null; then
-  if [ "$DRY" = 1 ]; then echo "  + echo '(setq my/use-evil t)' >> $REPO/personal.el"
-  else echo '(setq my/use-evil t)' >> "$REPO/personal.el"; fi
-  ok "evil enabled in personal.el"
+if [ "$EMACS_KEYS" = 1 ] && ! grep -q '^(setq my/use-evil nil)' "$REPO/personal.el" 2>/dev/null; then
+  if [ "$DRY" = 1 ]; then echo "  + echo '(setq my/use-evil nil)' >> $REPO/personal.el"
+  else echo '(setq my/use-evil nil)' >> "$REPO/personal.el"; fi
+  ok "plain Emacs keys set in personal.el (C-c v switches to Vim keys)"
 fi
 
 # ---------------------------------------------------------------- 6. Packages

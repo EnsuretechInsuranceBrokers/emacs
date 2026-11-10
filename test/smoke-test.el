@@ -27,7 +27,9 @@
 (ert-deftest my-test-modules-loaded ()
   (dolist (f '(init-package init-perf init-defaults init-ui init-completion
                init-navigation init-editing init-dev init-compile init-langs
-               init-rexim init-git init-tools init-keys init-maint my-autocommit))
+               init-workflow init-git init-tools init-keys init-maint my-autocommit))
+    (should (featurep f)))
+  (dolist (f (when my/use-evil '(init-evil)))
     (should (featurep f))))
 
 (ert-deftest my-test-gc-restored ()
@@ -45,22 +47,63 @@
     (should (memq major-mode '(c++-mode c++-ts-mode)))
     (should (eq (my/c-like-kind) 'c++))))
 
-(ert-deftest my-test-c-big-file-uses-simpc ()
+(ert-deftest my-test-c-big-file-uses-fast-c ()
   (my-test--with-file "big.h" (make-string (1+ my/c-big-file-size) ?x)
-    (should (eq major-mode 'simpc-mode))
+    (should (eq major-mode 'fast-c-mode))
     (should (eq (my/c-like-kind) 'c))))
 
-(ert-deftest my-test-simpc-always ()
-  (let ((my/c-mode 'simpc))
+(ert-deftest my-test-fast-c-always ()
+  (let ((my/c-mode 'fast))
     (my-test--with-file "a.cpp" "int main() {}\n"
-      (should (eq major-mode 'simpc-mode))
+      (should (eq major-mode 'fast-c-mode))
       (should (eq (my/c-like-kind) 'c++)))))
 
-(ert-deftest my-test-simpc-indents ()
-  (let ((my/c-mode 'simpc))
-    (my-test--with-file "a.c" "int f() {\nreturn 0;\n}\n"
-      (indent-region (point-min) (point-max))
-      (should (equal (buffer-string) "int f() {\n    return 0;\n}\n")))))
+(defun my-test--fast-c-indent (expected)
+  "Strip indentation from EXPECTED, re-indent it in `fast-c-mode', compare."
+  (with-temp-buffer
+    (insert (replace-regexp-in-string "^[ \t]+" "" expected))
+    (fast-c-mode)
+    (indent-region (point-min) (point-max))
+    (should (equal (buffer-string) expected))))
+
+(ert-deftest my-test-fast-c-indent-blocks ()
+  (my-test--fast-c-indent
+   "int main(void) {\n    if (x) {\n        x++;\n    } else {\n        x--;\n    }\n    return x;\n}\n")
+  (my-test--fast-c-indent "int main(void)\n{\n    if (x)\n    {\n        y();\n    }\n}\n")
+  (my-test--fast-c-indent "void f() {\n    do {\n        a();\n    } while (x);\n    b();\n}\n"))
+
+(ert-deftest my-test-fast-c-indent-braceless ()
+  (my-test--fast-c-indent
+   "void f() {\n    if (a)\n        b();\n    else if (c)\n        d();\n    else\n        e();\n    for (;;)\n        if (x)\n            y();\n    z();\n}\n")
+  (my-test--fast-c-indent "void f() {\n    if (a &&\n        b)\n        c();\n    d();\n}\n"))
+
+(ert-deftest my-test-fast-c-indent-parens-and-labels ()
+  (my-test--fast-c-indent
+   "void f() {\n    foo(a,\n        b);\n    bar(\n        x\n    );\n}\n")
+  (my-test--fast-c-indent
+   "void f() {\n    switch (x) {\n    case 1:\n        a();\n        break;\n    default:\n        c();\n    }\n}\n")
+  (my-test--fast-c-indent "class A {\npublic:\n    int x;\nprivate:\n    void f();\n};\n"))
+
+(ert-deftest my-test-fast-c-indent-comments-preprocessor ()
+  (my-test--fast-c-indent
+   "/* a\n * b\n */\nvoid f() {\n    // note {\n#ifdef X\n    a();\n#endif\n    puts(\"{\");\n    b();\n}\n"))
+
+(ert-deftest my-test-fast-c-highlight-and-imenu ()
+  (require 'imenu)
+  (with-temp-buffer
+    (insert "#include <stdio.h>\n#define MAX 10\nstruct Foo { int a; };\nstatic int add(int a, int b)\n{\n    size_t n = MAX;\n    return a + b;\n}\n")
+    (fast-c-mode)
+    (font-lock-ensure)
+    (cl-flet ((face-at (s) (goto-char (point-min)) (search-forward s)
+                       (get-text-property (1- (point)) 'face)))
+      (should (eq (face-at "stdio") 'font-lock-string-face))
+      (should (eq (face-at "return") 'font-lock-keyword-face))
+      (should (eq (face-at "size_t") 'font-lock-type-face))
+      (should (eq (face-at "add") 'font-lock-function-name-face)))
+    (let ((index (imenu--generic-function imenu-generic-expression)))
+      (should (assoc "add" index))
+      (should (assoc "Types" index))
+      (should (assoc "Macros" index)))))
 
 ;;;; compile-command defaults
 (ert-deftest my-test-compile-command-single-c ()
@@ -124,7 +167,39 @@
   (skip-unless (package-installed-p 'gruber-darker-theme))
   (should (custom-theme-enabled-p 'gruber-darker)))
 
+;;;; Evil (Vim keys)
+(ert-deftest my-test-leader-everywhere ()
+  (should (keymapp (keymap-global-lookup "C-c SPC")))
+  (should (eq (keymap-lookup my/leader-map "?") #'my/vim-to-emacs))
+  (should (eq (keymap-lookup my/leader-map "t e") #'my/toggle-evil))
+  (should (eq (keymap-global-lookup "C-c v") #'my/toggle-evil)))
+
+(ert-deftest my-test-evil-setup ()
+  (skip-unless (and my/use-evil (package-installed-p 'evil)))
+  (should evil-mode)
+  (with-temp-buffer
+    (fundamental-mode)
+    (evil-local-mode 1)
+    (evil-normal-state)
+    (should (keymapp (key-binding (kbd "SPC"))))   ; leader
+    (evil-insert-state)
+    ;; Emacs keys while typing
+    (should (eq (key-binding (kbd "C-a")) #'my/smart-beginning-of-line))
+    (should (eq (key-binding (kbd "C-e")) #'move-end-of-line))))
+
+(ert-deftest my-test-vim-cheat-sheet ()
+  (save-window-excursion (my/vim-to-emacs))
+  (with-current-buffer "*Vim -> Emacs*"
+    (should (string-match-p "C-x C-s" (buffer-string)))))
+
 ;;;; Helpers
+(ert-deftest my-test-copy-line ()
+  (with-temp-buffer
+    (insert "first\nsecond\n")
+    (goto-char (point-min))
+    (my/copy-region-or-line)
+    (should (equal (current-kill 0) "first\n"))))
+
 (ert-deftest my-test-unfill-paragraph ()
   (with-temp-buffer
     (insert "one\ntwo\nthree\n")

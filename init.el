@@ -3,15 +3,15 @@
 ;;; Commentary:
 ;; A vanilla Emacs config in the rexim/Tsoding spirit: dark gruber theme,
 ;; Iosevka, instant buffer/file switching, compile-driven workflow.
-;; Ported from a Doom setup, so Doom habits (SPC leader, evil) are one
-;; switch away: set `my/use-evil' to t in personal.el.
+;; Vim keys (evil) are on by default for coming from Neovim; C-c v
+;; switches to plain Emacs keys to practise, SPC ? shows a cheat sheet.
 ;;
 ;; Layout:
 ;;   early-init.el       startup speed, frame setup
 ;;   init.el             this file: options + module loading
 ;;   lisp/init-*.el      one file per topic
 ;;   lisp/my-*.el        small self-contained features (autocommit)
-;;   site-lisp/          bundled third-party code (simpc-mode, MIT)
+;;   lisp/fast-c-mode.el our own fast C/C++ mode for huge files
 ;;   personal.el         your machine-local overrides (git-ignored)
 ;;   test/               smoke tests: ./test/run.sh
 ;;
@@ -27,9 +27,10 @@
 ;;;; Knobs (override any of these in personal.el)
 (defgroup my nil "Personal configuration." :group 'convenience)
 
-(defcustom my/use-evil nil
+(defcustom my/use-evil t
   "Non-nil: Vim keys via evil, with a Doom-style SPC leader.
-Nil: classic Emacs keys, like rexim/Tsoding."
+Insert mode still uses Emacs keys, so you learn them as you go.
+Nil: plain Emacs keys, like rexim/Tsoding.  C-c v switches at any time."
   :type 'boolean)
 
 (defcustom my/fonts '("Iosevka" "Iosevka Term" "JetBrains Mono" "DejaVu Sans Mono")
@@ -72,7 +73,7 @@ Nil: classic Emacs keys, like rexim/Tsoding."
 (require 'init-dev)         ; eglot (LSP), tree-sitter, flymake, format
 (require 'init-compile)     ; compile loop, C/C++ runners, artisan
 (require 'init-langs)       ; per-language settings
-(require 'init-rexim)       ; rexim's habits: simpc, whitespace, his keys
+(require 'init-workflow)    ; C mode choice, whitespace, paredit, helpers
 (require 'init-git)         ; magit, diff-hl
 (require 'init-tools)       ; dired, vterm, docker, dape, org
 (require 'init-keys)        ; global keymap + leader

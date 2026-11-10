@@ -3,18 +3,21 @@
 A fast, keyboard-first Emacs config in the rexim / Tsoding style:
 gruber-darker, Iosevka, instant buffer and file switching, and a
 compile-driven "edit, build, run" loop. It's plain Emacs 29+ (no Doom),
-built from my old Doom config plus everything useful in
-[rexim's own config](https://github.com/rexim/dotfiles). It's made to last:
+built from my old Doom config plus the best ideas from
+[rexim's config](https://github.com/rexim/dotfiles), all written fresh
+(nothing is copied). Vim keys are on by default for coming from Neovim, set
+up so you learn the Emacs keys along the way. It's made to last:
 health checks, safe upgrades with rollback, and tests that run every week
 on several Emacs versions. A tidied Doom version is in [`doom/`](doom/).
 
 - [One-command setup](#one-command-setup)
 - [What the script does](#what-the-script-does)
 - [Manual install](#manual-install)
+- [Coming from Neovim](#coming-from-neovim)
 - [Getting fast](#getting-fast): the part that actually matters
 - [Key reference](#key-reference)
 - [Languages](#languages)
-- [What's from rexim's config](#whats-from-rexims-config)
+- [Ideas from rexim's config](#ideas-from-rexims-config)
 - [Notes that back themselves up](#notes-that-back-themselves-up)
 - [Customizing](#customizing)
 - [Keeping it working for decades](#keeping-it-working-for-decades)
@@ -35,7 +38,7 @@ Then start `emacs`. That's it.
 Common variants:
 
 ```bash
-./setup.sh --evil                 # Vim keys + Doom-style SPC leader
+./setup.sh --emacs-keys           # plain Emacs keys instead of Vim keys
 ```
 
 ```bash
@@ -52,7 +55,7 @@ Common variants:
 
 | Option | Effect |
 |---|---|
-| `--evil` | Vim keybindings, `SPC` leader (writes `(setq my/use-evil t)` to `personal.el`) |
+| `--emacs-keys` | Plain Emacs keys instead of the default Vim keys (writes `(setq my/use-evil nil)` to `personal.el`) |
 | `--daemon` | Runs Emacs as a background service at login (systemd / launchd). `emacsclient` then opens in ~50 ms |
 | `--keyboard` | Caps Lock → Ctrl and a 200 ms / 40 Hz key repeat (GNOME, X11, macOS) |
 | `--minimal` | Skips the font and language servers |
@@ -100,6 +103,42 @@ Install `ripgrep` and `fd` and start `emacs`. Packages install on the first star
 installs the rest on the next start.
 
 ---
+
+## Coming from Neovim
+
+Vim keys are **on** (evil, plus evil-collection for magit/dired/help,
+surround and commentary). Your Neovim habits work: `hjkl`, text objects,
+`ciw`, `.`, macros, `:s`, `:w`, `gcc`, `cs"'`, `*`, `C-d`/`C-u`, `C-o`/`C-i`,
+`gd`, relative numbers, `-` for the file browser.
+
+| Neovim thing | Here |
+|---|---|
+| `<leader>` | `SPC` (Doom layout: `SPC SPC` files, `SPC ,` buffers, `SPC /` grep) |
+| Telescope | `SPC SPC`, `SPC ,`, `SPC /`, `SPC s s`: same idea, with live preview |
+| oil.nvim / netrw | `-` (dired). `i` or `C-c C-e` to rename files by editing text |
+| flash.nvim / leap | `gs` or `C-;`, type 1–2 chars, pick a label |
+| LSP (`gd`, `K`, `gr`) | `gd`, `K`, `gr` via eglot; `SPC c a` code action, `SPC c r` rename |
+| `:term` | `SPC o t` (vterm) |
+| fugitive / lazygit | `SPC g g` (magit, the best git UI there is) |
+| `:Lazy` | `./setup.sh --update`, `M-x my/upgrade` |
+| `:checkhealth` | `./setup.sh --doctor`, `M-x my/doctor` |
+
+### Learning the Emacs keys (when you're ready)
+
+You don't have to switch at once. Three steps:
+
+1. **Insert mode already uses Emacs keys.** While typing, `C-a`/`C-e` go to
+   the start/end of the line, `C-k` kills to the end, `M-f`/`M-b` move by word,
+   `C-n`/`C-p` move by line, `C-y` pastes. Use them instead of `Esc` + a motion.
+2. **`C-z`** switches *this buffer* to Emacs keys (and back). Try it in a
+   scratch buffer for ten minutes a day.
+3. **`C-c v`** (or `SPC t e`) switches Vim keys off *everywhere*. Do a whole
+   session like that; press `C-c v` again when you need to get work done.
+
+`SPC ?` (or `C-c SPC ?` without evil) shows a **Vim → Emacs cheat sheet**:
+`dd` → `C-S-<backspace>`, `yy` → `M-w`, `:w` → `C-x C-s`, `/` → `C-s`, and
+about 40 more. When `C-c v` feels normal, put `(setq my/use-evil nil)` in
+`personal.el`. Everything below about Emacs keys then applies directly.
 
 ## Getting fast
 
@@ -217,8 +256,9 @@ above it was.
 
 ## Key reference
 
-Without evil, these are plain Emacs keys. With `--evil`, the same commands
-are on the `SPC` leader (see [below](#leader-spc-with-evil-c-c-spc-without)).
+These are the Emacs keys. They work in insert mode and with Vim keys off. With
+Vim keys on, the same commands are on the `SPC` leader (see
+[below](#leader-spc-with-evil-c-c-spc-without)).
 
 ### Moving around
 
@@ -254,6 +294,7 @@ are on the `SPC` leader (see [below](#leader-spc-with-evil-c-c-spc-without)).
 | `C-=` / `C-+` | Expand / shrink selection by syntax |
 | `C-a` | First non-blank, press again for column 0 |
 | `C-w` | Kill region, or the word before point |
+| `M-w` | Copy region, or the whole line if nothing is selected (like `yy`) |
 | `C-o` / `C-S-o` | New line below / above |
 | `C-/` / `C-?` / `C-x u` | Undo / redo / visual undo tree |
 | `M-y` | Pick from the kill ring |
@@ -286,7 +327,7 @@ Snippets (type the word, then `TAB`): `cp` (competitive programming template),
 `main`, `nob`, and for C/C++ `for`, `fori`, `if`, `ife`, `elif`, `while`, `sw`,
 `st` (typedef struct), `inc`, `incq`, `once` (include guard), `pr` (printf), `todo`.
 
-### rexim's own keys
+### More keys
 
 | Key | Does |
 |---|---|
@@ -299,6 +340,8 @@ Snippets (type the word, then `TAB`): `cp` (competitive programming template),
 | `C-c C-j` | In Emacs Lisp: evaluate and print the result below |
 | `M-x my/copy-org-link-here` | Copy an org link to this file and line |
 | `M-x my/toggle-transparency` | Make the frame see-through |
+| `C-c v` | Vim keys off / on |
+| `C-c SPC ?` | Vim → Emacs cheat sheet |
 
 ### Code (when a language server is running)
 
@@ -322,6 +365,7 @@ Doom layout, so Doom habits carry over:
 | `SPC s s` | search buffer | `SPC s i` | functions |
 | `SPC c a` | code action | `SPC c r` | rename |
 | `SPC w` | windows… | `SPC b` / `SPC f` | buffers… / files… |
+| `SPC t` | toggles: `e` Vim keys, `f` format on save, `w` whitespace, `l` line numbers, `c` autocommit | `SPC ?` | Vim → Emacs cheat sheet |
 
 which-key shows everything else after a short pause.
 
@@ -349,48 +393,45 @@ grammars are installed by `setup.sh`, or offered on first use.
 C/C++ formatting only runs when the project has a `.clang-format` file.
 Without one, clang-format's default style would rewrite your whole file on
 every save. Big files (over 256 KB) never start a language server, never get
-formatted, and C/C++ ones open in simpc-mode.
+formatted, and C/C++ ones open in `fast-c-mode`.
 
-## What's from rexim's config
+### fast-c-mode
 
-I read through [rexim/dotfiles](https://github.com/rexim/dotfiles)
-(`.emacs`, `.emacs.rc/*.el`, `.emacs.local/`, `.emacs.snippets/`). His
-dotfiles repo has no license, so nothing is copied from it: the ideas are
-written fresh here. The one exception is **simpc-mode**, his fast C mode,
-which has its own MIT-licensed repo and is bundled in `site-lisp/simpc-mode/`
-with its license.
+`lisp/fast-c-mode.el` is this config's own small C/C++ mode. It's instant on
+any file size because it only uses regexps and Emacs' cached paren depth,
+never a parse of the whole file. It still handles K&R and Allman braces,
+braceless `if`/`for`/`while` bodies (nested too), conditions split over
+lines, arguments aligned inside `( )`, `case` labels, `public:`/`private:`,
+` * ` block-comment lines, preprocessor lines, function/type/macro lists for
+`M-g i`, and `*_t` types and `MACROS`. clangd still works in it. By default it's
+used for files over 256 KB; `(setq my/c-mode 'fast)` uses it for everything.
 
-| rexim has | Here |
+## Ideas from rexim's config
+
+I read through [rexim/dotfiles](https://github.com/rexim/dotfiles) for ideas.
+Nothing is copied from it (that repo has no license, and his simpc-mode isn't
+bundled either). Everything here is written for this config.
+
+| Idea | Here |
 |---|---|
 | gruber-darker, Iosevka 20, no tool/menu/scroll bars | same |
-| relative line numbers everywhere | same, in code/text/config buffers |
-| ido + smex for files, buffers, `M-x` | vertico + orderless + consult (same feel, works for every prompt, live preview) |
-| company | corfu (lighter, same idle completion) |
-| multiple-cursors with `C->` `C-<` `C-c C-<` `C-S-c C-S-c` `C-"` `C-:` | same keys |
-| move-text on `M-p` / `M-n` | same, plus re-indent after moving |
-| `C-,` duplicate line | same (Emacs 29's `duplicate-dwim`, also does regions) |
-| `simpc-mode` for all C/C++ | `my/c-mode`: `auto` (default) uses tree-sitter/cc-mode, and simpc for files over 256 KB. `simpc` = exactly rexim |
-| whitespace-mode in code, trailing space deleted on save | `my/whitespace-style`: `light` (default) or `rexim` (dots for every space, like his streams) |
-| `compile` with ANSI colours, `compilation-scroll-output` | same, plus `C-c r` recompile and smart default commands |
-| dired-x, `dired-dwim-target`, `-alh` | same, plus directories first and one dired buffer at a time |
-| windmove on `S-<arrows>` | same |
-| paredit in Lisp buffers, `C-c C-j` eval-print | same (paredit leaves `M-s`/`M-?` alone) |
-| yasnippet with his own snippets | yasnippet with similar C snippets written fresh (`for`, `if`, `once`…) |
+| relative line numbers | same |
+| ido + smex for files, buffers, `M-x` | vertico + orderless + consult: same feel, every prompt, live preview |
+| multiple-cursors on `C->` `C-<` `C-c C-<` `C-S-c C-S-c` `C-"` `C-:` | same keys |
+| move-text on `M-p` / `M-n`, duplicate line on `C-,` | same, plus re-indent after moving, duplicate regions too |
+| a tiny fast C mode | our own `fast-c-mode`, with better indentation (braceless bodies, parens, labels) |
+| whitespace-mode in code | `my/whitespace-style`: `light` (default) or `dots` (every space as a dot) |
+| `compile` with ANSI colours | same, plus recompile, run-file and smart default commands |
+| dired-x, dwim target; windmove on `S-<arrows>` | same |
+| paredit, `C-c C-j` eval-print in Lisp | same (paredit leaves `M-s`/`M-?` alone) |
 | `C-x C-g` ffap, `C-c i m` imenu, `C-c m s`/`l` magit, `C-c M-q` unfill | same keys |
-| `C-x p d` timestamp, `C-x p s` rgrep selection | moved to `C-c T` and `C-c s`, because Emacs 28+ uses `C-x p` for projects |
-| org agenda/capture | `C-c o a` / `C-c o c` (his `C-c c` is compile here) |
-| autocommit-rc.el (git-synced agenda) | `my/autocommit-mode`, rewritten: see below |
-| magit, editorconfig, many language modes | same, lazily loaded |
-| haskell, rust, lua, nix, go, php, kotlin, glsl, cmake, … modes | same (`my/extra-languages`) |
-
-Left out on purpose: helm (replaced by consult), his toy-language modes
-(porth, basm, noq, jai…), Coq/Proof General, tide (eglot does TypeScript), and
-`confirm-kill-emacs` (your Doom config turned it off).
+| timestamp, rgrep the selection | `C-c T`, `C-c s` (ripgrep) |
+| a git repo for the agenda that commits on save | `my/autocommit-mode`: see below |
 
 ## Notes that back themselves up
 
-rexim keeps his agenda in a git repo that commits and pushes on every save.
-Here that's `my/autocommit-mode`:
+Keep notes or an agenda in a git repo that commits and pushes itself on every
+save, with `my/autocommit-mode`:
 
 ```
 M-x my/autocommit-init RET ~/org/ RET
@@ -408,7 +449,7 @@ git output is in the ` *autocommit*` buffer.
 Put machine-local settings in `personal.el` (git-ignored, loaded before everything):
 
 ```elisp
-(setq my/use-evil t                  ; Vim keys
+(setq my/use-evil nil                ; plain Emacs keys
       my/fonts '("Iosevka" "JetBrains Mono")
       my/font-size 18
       my/start-server nil)
@@ -416,11 +457,11 @@ Put machine-local settings in `personal.el` (git-ignored, loaded before everythi
 
 | Option | Default | What it does |
 |---|---|---|
-| `my/use-evil` | `nil` | Vim keys + `SPC` leader |
+| `my/use-evil` | `t` | Vim keys + `SPC` leader (Emacs keys in insert mode). `C-c v` toggles |
 | `my/fonts`, `my/font-size` | Iosevka, 20 | First installed font wins |
-| `my/c-mode` | `auto` | `auto` / `simpc` (rexim) / `cc` |
-| `my/c-big-file-size` | 256 KB | Above this: simpc, no LSP, no formatting, no whitespace-mode |
-| `my/whitespace-style` | `light` | `light` / `rexim` / `nil` |
+| `my/c-mode` | `auto` | `auto` / `fast` (always fast-c-mode) / `cc` |
+| `my/c-big-file-size` | 256 KB | Above this: fast-c-mode, no LSP, no formatting, no whitespace-mode |
+| `my/whitespace-style` | `light` | `light` / `dots` / `nil` |
 | `my/use-paredit` | `t` | Structural editing in Lisp buffers |
 | `my/extra-languages` | `t` | Rust, Zig, Lua, Haskell, Kotlin… modes |
 | `my/start-server` | `t` | So `emacsclient` opens files in this Emacs |
@@ -439,17 +480,17 @@ lisp/init-ui.el        theme, font, line numbers
 lisp/init-completion.el vertico, orderless, consult, embark, corfu
 lisp/init-navigation.el windows, avy, project, ibuffer
 lisp/init-editing.el   multiple cursors, move-text, snippets, folding
-lisp/init-evil.el      optional Vim layer
+lisp/init-evil.el      Vim keys (on by default), SPC leader
 lisp/init-dev.el       eglot, tree-sitter, flymake, apheleia, dape
 lisp/init-compile.el   compile loop, run-file, CP, artisan
 lisp/init-langs.el     per-language settings
-lisp/init-rexim.el     rexim's habits: simpc, whitespace, paredit, his keys
+lisp/init-workflow.el  C mode choice, whitespace, paredit, helpers
+lisp/fast-c-mode.el    our own fast C/C++ mode
 lisp/init-git.el       magit, diff-hl
 lisp/init-tools.el     dired, vterm, docker, org, server
 lisp/init-keys.el      global keys + leader map
 lisp/init-maint.el     doctor, snapshots, upgrade, rollback
 lisp/my-autocommit.el  commit-on-save for notes repos
-site-lisp/simpc-mode/  rexim's simpc-mode (MIT, with its LICENSE)
 snippets/              your yasnippets
 test/                  smoke tests (./test/run.sh)
 doom/                  the Doom version of this config
@@ -511,6 +552,7 @@ longer errors before LSP starts, and `SPC j` (avy) and `-` (dired) are added.
 | Something's broken after editing config | `emacs --debug-init` shows the exact error |
 | Upgrade broke something | `M-x my/rollback`, pick the latest snapshot |
 | Not sure what's wrong | `./setup.sh --doctor` |
-| Huge C file is slow | It should open in simpc-mode (check the mode line). Lower `my/c-big-file-size` |
+| Huge C file is slow | It should open in fast-c-mode ("FastC" in the mode line). Lower `my/c-big-file-size` |
+| Stuck in a mode / keys do odd things | `Esc` then `C-g`. `C-z` toggles Emacs keys in the buffer, `C-c v` everywhere |
 | clang-format didn't run | Add a `.clang-format` to the project (`clang-format -style=llvm -dump-config > .clang-format`) |
 | Start over | `make clean` (packages and caches; keeps history) and start Emacs |

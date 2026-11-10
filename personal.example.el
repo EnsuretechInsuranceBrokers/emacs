@@ -2,19 +2,20 @@
 ;; Copy this file to personal.el (git-ignored) and edit.  It is loaded
 ;; before every module, so it can change the knobs in init.el.
 
-;; Vim keys + SPC leader (your Doom muscle memory).  nil = classic Emacs keys.
-;; (setq my/use-evil t)
+;; Vim keys are ON by default (coming from Neovim).  When you've learned
+;; the Emacs keys, switch them off.  C-c v toggles at any time to practise.
+;; (setq my/use-evil nil)
 
 ;; Font: first installed one wins.
 ;; (setq my/fonts '("Iosevka" "JetBrains Mono")
 ;;       my/font-size 18)
 
-;; C/C++ mode: 'auto (tree-sitter, simpc for huge files), 'simpc (exactly
-;; like rexim), or 'cc (never simpc).
-;; (setq my/c-mode 'simpc)
+;; C/C++ mode: 'auto (tree-sitter; fast-c-mode for huge files), 'fast
+;; (always our fast-c-mode), or 'cc (never fast-c-mode).
+;; (setq my/c-mode 'fast)
 
-;; Draw every space as a dot, like rexim's streams.  'light (default) or nil.
-;; (setq my/whitespace-style 'rexim)
+;; Draw every space as a dot, like Tsoding's streams.  'light (default) or nil.
+;; (setq my/whitespace-style 'dots)
 
 ;; No paredit in Lisp buffers / no extra language modes.
 ;; (setq my/use-paredit nil

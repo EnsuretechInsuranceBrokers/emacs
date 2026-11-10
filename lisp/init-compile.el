@@ -56,10 +56,10 @@ With a prefix ARG, always ask for the command."
     'c))
 
 (defun my/c-like-kind ()
-  "`c', `c++' or nil for this buffer (works for simpc-mode too)."
+  "`c', `c++' or nil for this buffer (works for fast-c-mode too)."
   (cond ((derived-mode-p 'c++-mode 'c++-ts-mode) 'c++)
         ((derived-mode-p 'c-mode 'c-ts-mode) 'c)
-        ((derived-mode-p 'simpc-mode) (my/c-like-kind-from-name))))
+        ((derived-mode-p 'fast-c-mode) (my/c-like-kind-from-name))))
 
 ;;;; Default compile-command for files without a build system
 (defun my/default-compile-command ()
@@ -87,7 +87,7 @@ With a prefix ARG, always ask for the command."
 
 ;; `hack-local-variables-hook' runs after .dir-locals.el is applied, so a
 ;; project's own command always wins.
-(dolist (hook '(c-mode-hook c-ts-mode-hook c++-mode-hook c++-ts-mode-hook simpc-mode-hook))
+(dolist (hook '(c-mode-hook c-ts-mode-hook c++-mode-hook c++-ts-mode-hook fast-c-mode-hook))
   (add-hook hook
             (lambda ()
               (add-hook 'hack-local-variables-hook #'my/set-compile-command nil t))))

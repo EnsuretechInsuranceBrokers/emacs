@@ -32,7 +32,7 @@
     python-mode python-ts-mode
     js-mode js-ts-mode typescript-ts-mode tsx-ts-mode
     php-mode php-ts-mode
-    simpc-mode
+    fast-c-mode
     rust-mode rust-ts-mode zig-mode haskell-mode lua-mode lua-ts-mode)
   "Major modes that start a language server automatically.
 If the server is not installed eglot prints one warning and the buffer
@@ -90,7 +90,7 @@ works as normal.")
                                           ("pyright-langserver" "--stdio")
                                           "pylsp" "ruff-lsp"))))
   (add-to-list 'eglot-server-programs
-               '((c-mode c-ts-mode c++-mode c++-ts-mode (simpc-mode :language-id "c"))
+               '((c-mode c-ts-mode c++-mode c++-ts-mode (fast-c-mode :language-id "c"))
                  . ("clangd" "--background-index" "--clang-tidy"
                     "--header-insertion=never" "--completion-style=detailed"
                     "-j=4")))
@@ -132,7 +132,7 @@ works as normal.")
   :config
   ;; C/C++: only format when the project has a .clang-format.  Otherwise
   ;; clang-format's default style would rewrite your whole file on save.
-  (setf (alist-get 'simpc-mode apheleia-mode-alist) 'clang-format)
+  (setf (alist-get 'fast-c-mode apheleia-mode-alist) 'clang-format)
   (defun my/apheleia-inhibit-p ()
     (or (my/big-buffer-p)
         (and (my/c-like-kind)

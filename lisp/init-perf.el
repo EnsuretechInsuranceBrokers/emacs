@@ -45,10 +45,10 @@
               cursor-in-non-selected-windows nil)
 
 ;; Big files: skip the heavy machinery (LSP, whitespace-mode, formatting)
-;; and open C/C++ in rexim's fast simpc-mode.
+;; and open C/C++ in our fast-c-mode.
 (defcustom my/c-big-file-size (* 256 1024)
   "Files bigger than this many bytes count as \"big\".
-Big C/C++ files open in simpc-mode (see `my/c-mode') and skip the
+Big C/C++ files open in `fast-c-mode' (see `my/c-mode') and skip the
 language server, whitespace-mode and format-on-save."
   :type 'integer :group 'my)
 
