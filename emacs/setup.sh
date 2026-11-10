@@ -15,7 +15,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/EnsuretechInsuranceBrokers/emacs.git"
-CLONE_DIR="${EMACS_CONFIG_DIR:-$HOME/src/emacs-config}"
+CLONE_DIR="${EMACS_CONFIG_DIR:-$HOME/src/emacs-config}"   # the repo; the config is its emacs/ folder
 TARGET="${XDG_CONFIG_HOME:-$HOME/.config}/emacs"
 MIN_EMACS=29
 
@@ -99,7 +99,7 @@ if [ "$MODE" != install ]; then
   fi
   step "Updating the config repo"
   repo="$(cd "$TARGET" && pwd -P)"
-  if [ -d "$repo/.git" ]; then
+  if git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     if git -C "$repo" diff --quiet && git -C "$repo" diff --cached --quiet; then
       run git -C "$repo" pull --ff-only || warn "git pull failed; continuing with the local version"
     else
@@ -217,21 +217,27 @@ if [ "$DO_FONT" = 1 ]; then
       brew)   try brew install --cask font-iosevka ;;
       pacman) pkg_install ttc-iosevka ;;
       *)
-        # Straight from the Iosevka GitHub releases into ~/.local/share/fonts.
+        # From the Iosevka GitHub releases into ~/.local/share/fonts.  Only the
+        # 4 styles Emacs uses (unhinted: ~34 MB instead of ~640 MB for the full set).
         tag="$(curl -fsSL https://api.github.com/repos/be5invis/Iosevka/releases/latest 2>/dev/null \
                | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p' | head -1 || true)"
+        if [ -z "$tag" ] && have git; then   # API blocked or rate-limited: ask git instead
+          tag="$(git ls-remote --tags --refs https://github.com/be5invis/Iosevka.git 2>/dev/null \
+                 | sed -n 's|.*refs/tags/v\([0-9][0-9.]*\)$|\1|p' | sort -V | tail -1 || true)"
+        fi
         if [ -z "$tag" ]; then
           warn "couldn't reach GitHub; get Iosevka from https://github.com/be5invis/Iosevka/releases"
         else
           dir="$HOME/.local/share/fonts/iosevka"
           tmp="$(mktemp -d)"
           try curl -fsSL -o "$tmp/iosevka.zip" \
-            "https://github.com/be5invis/Iosevka/releases/download/v$tag/PkgTTC-Iosevka-$tag.zip"
+            "https://github.com/be5invis/Iosevka/releases/download/v$tag/PkgTTF-Unhinted-Iosevka-$tag.zip"
           if [ "$DRY" = 1 ] || [ -s "$tmp/iosevka.zip" ]; then
             run mkdir -p "$dir"
-            try unzip -oq "$tmp/iosevka.zip" -d "$dir"
+            try unzip -joq "$tmp/iosevka.zip" -d "$dir" \
+              'Iosevka-Regular.ttf' 'Iosevka-Bold.ttf' 'Iosevka-Italic.ttf' 'Iosevka-BoldItalic.ttf'
             have fc-cache && try fc-cache -f "$dir"
-            ok "Iosevka $tag"
+            ok "Iosevka $tag (4 styles)"
           fi
           rm -rf "$tmp"
         fi ;;
@@ -291,9 +297,9 @@ if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/init.el" ] && [ -d "$SCRIPT_DIR/lis
   REPO="$SCRIPT_DIR"
 else
   # Run without a checkout (e.g. curl | bash): clone it.
-  REPO="$CLONE_DIR"
-  if [ -d "$REPO/.git" ]; then run git -C "$REPO" pull --ff-only
-  else run mkdir -p "$(dirname "$REPO")"; run git clone "$REPO_URL" "$REPO"; fi
+  if [ -d "$CLONE_DIR/.git" ]; then run git -C "$CLONE_DIR" pull --ff-only
+  else run mkdir -p "$(dirname "$CLONE_DIR")"; run git clone "$REPO_URL" "$CLONE_DIR"; fi
+  REPO="$CLONE_DIR/emacs"
 fi
 ok "repo: $REPO"
 
@@ -346,7 +352,9 @@ if [ "$DO_PACKAGES" = 1 ]; then
                        (ignore-errors (treesit-auto-install-all))))
                    ;; Build the vterm module now, not on first M-x vterm.
                    (setq vterm-always-compile-module t)
-                   (ignore-errors (require (quote vterm))))' >"$log" 2>&1; then
+                   (ignore-errors (require (quote vterm)))
+                   ;; Byte-compile the config itself: faster startup.
+                   (my/compile-config))' >"$log" 2>&1; then
       failed="$(grep -c 'Failed to install' "$log" 2>/dev/null || true)"
       if [ "${failed:-0}" = 0 ]; then ok "packages ready (log: $log)"
       else warn "$failed package(s) failed to install (network?). Emacs retries on next start. Log: $log"; fi

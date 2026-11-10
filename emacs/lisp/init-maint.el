@@ -6,30 +6,46 @@
 ;;   M-x my/upgrade           snapshot packages, then upgrade everything
 ;;   M-x my/rollback          go back to a snapshot if an upgrade broke something
 ;;   M-x my/snapshots-prune   keep only the newest few snapshots
+;;   M-x my/clean             free disk: orphan packages, old native code, old snapshots
+;;   M-x my/disk-usage        how much space Emacs uses, and where
+;;   M-x my/compile-config    byte- and native-compile lisp/ (faster startup)
 ;;   M-x my/benchmark-startup start a fresh Emacs and time it
 ;;
 ;; The shell equivalents are `./setup.sh --doctor' and `./setup.sh --update'.
 
 ;;; Code:
 
-(require 'package)
 (require 'cl-lib)
+;; package.el is loaded by each command below, not at startup.
+(declare-function package-installed-p "package")
 
 (defconst my/snapshot-dir (expand-file-name "elpa-snapshots/" my/var-dir)
   "Where `my/upgrade' saves copies of the package directory.")
 
-(defcustom my/snapshots-keep 5
+(defcustom my/snapshots-keep 3
   "How many package snapshots `my/snapshots-prune' keeps."
   :type 'integer :group 'my)
 
 ;;;; Snapshots and upgrades
+(defun my/copy-tree-cheap (src dest)
+  "Copy directory SRC to DEST using hard links where possible.
+Upgrades replace whole package directories instead of editing files, so a
+hard-linked snapshot costs almost no disk: only packages that later change
+take space."
+  (unless (and (not (memq system-type '(windows-nt ms-dos)))
+               (executable-find "cp")
+               (zerop (call-process "cp" nil nil nil "-al"
+                                    (directory-file-name src) (directory-file-name dest))))
+    (copy-directory src dest t t t)))
+
 (defun my/snapshot (&optional label)
-  "Copy the installed packages to a dated snapshot.  Returns its path."
+  "Snapshot the installed packages (hard links: nearly free).  Returns its path."
   (interactive)
+  (require 'package)
   (let* ((name (format-time-string "%Y%m%d-%H%M%S"))
          (dest (expand-file-name (if label (concat name "-" label) name) my/snapshot-dir)))
     (make-directory my/snapshot-dir t)
-    (copy-directory package-user-dir dest t t t)
+    (my/copy-tree-cheap package-user-dir dest)
     (message "Package snapshot: %s" (abbreviate-file-name dest))
     dest))
 
@@ -37,6 +53,7 @@
   "Snapshot installed packages, then upgrade all of them.
 If anything breaks, restart Emacs and run \\[my/rollback]."
   (interactive)
+  (require 'package)
   (when (file-directory-p package-user-dir)
     (my/snapshot "before-upgrade"))
   (package-refresh-contents)
@@ -46,7 +63,8 @@ If anything breaks, restart Emacs and run \\[my/rollback]."
   (when (fboundp 'treesit-auto-install-all)
     (let ((treesit-auto-install t)) (ignore-errors (treesit-auto-install-all))))
   (package-quickstart-refresh)
-  (my/snapshots-prune)
+  (my/clean)
+  (my/compile-config)
   (message "Upgrade done.  Restart Emacs.  If something broke: M-x my/rollback"))
 
 (defun my/rollback (snapshot)
@@ -56,11 +74,12 @@ If anything breaks, restart Emacs and run \\[my/rollback]."
                          (reverse (directory-files my/snapshot-dir nil "\\`[0-9]")))))
            (unless all (user-error "No snapshots in %s" my/snapshot-dir))
            (completing-read "Roll back to: " all nil t nil nil (car all)))))
+  (require 'package)
   (let ((src (expand-file-name snapshot my/snapshot-dir))
         (broken (concat (directory-file-name package-user-dir) ".broken")))
     (when (file-exists-p broken) (delete-directory broken t))
     (rename-file package-user-dir broken)
-    (copy-directory src package-user-dir t t t)
+    (my/copy-tree-cheap src package-user-dir)
     (package-quickstart-refresh)
     (when (y-or-n-p (format "Rolled back to %s (old packages in %s). Restart now? "
                             snapshot (abbreviate-file-name broken)))
@@ -73,6 +92,109 @@ If anything breaks, restart Emacs and run \\[my/rollback]."
     (let ((all (reverse (directory-files my/snapshot-dir t "\\`[0-9]"))))
       (dolist (old (nthcdr my/snapshots-keep all))
         (delete-directory old t)))))
+
+;;;; Disk
+(defun my/dir-size (dir)
+  "Size of DIR in bytes (0 if missing)."
+  (cond ((not (file-directory-p dir)) 0)
+        ((executable-find "du")
+         (with-temp-buffer
+           (if (zerop (call-process "du" nil t nil "-sk" (expand-file-name dir)))
+               (* 1024 (string-to-number (buffer-string)))
+             0)))
+        (t (apply #'+ (mapcar (lambda (f) (or (file-attribute-size (file-attributes f)) 0))
+                              (directory-files-recursively dir "" nil t))))))
+
+(defun my/disk-places ()
+  "Alist of (LABEL . DIR) for everything this config stores on disk."
+  (require 'package)
+  `(("packages (elpa)" . ,package-user-dir)
+    ("native code (eln-cache)" . ,(expand-file-name "eln-cache" user-emacs-directory))
+    ("tree-sitter grammars" . ,(expand-file-name "tree-sitter" user-emacs-directory))
+    ("package snapshots" . ,my/snapshot-dir)
+    ("rolled-back packages" . ,(concat (directory-file-name package-user-dir) ".broken"))
+    ("history, auto-saves (var)" . ,my/var-dir)))
+
+(defun my/disk-usage ()
+  "Show how much disk this Emacs setup uses."
+  (interactive)
+  (let ((total 0) lines)
+    (dolist (place (my/disk-places))
+      (let ((size (my/dir-size (cdr place))))
+        (setq total (+ total size))
+        (push (format "  %-28s %8s  %s" (car place) (file-size-human-readable size)
+                      (abbreviate-file-name (cdr place)))
+              lines)))
+    (let ((report (concat (mapconcat #'identity (nreverse lines) "\n")
+                          (format "\n  %-28s %8s" "total" (file-size-human-readable total)))))
+      (if (called-interactively-p 'any)
+          (message "%s\nFree space: M-x my/clean" report)
+        report))))
+
+(defun my/clean (&optional deep)
+  "Free disk space without losing anything you need.
+Removes packages nothing depends on any more, native code compiled for
+other Emacs versions, old snapshots and leftovers of a rollback.
+With a prefix argument (DEEP), also clear the whole native-code cache;
+it rebuilds itself in the background as you use Emacs."
+  (interactive "P")
+  (require 'package)
+  (let ((before (apply #'+ (mapcar (lambda (p) (my/dir-size (cdr p))) (my/disk-places)))))
+    ;; Orphaned dependencies.
+    (when (fboundp 'package-autoremove)
+      (cl-letf (((symbol-function 'yes-or-no-p) (lambda (&rest _) t))
+                ((symbol-function 'y-or-n-p) (lambda (&rest _) t)))
+        (ignore-errors (package-autoremove))))
+    ;; Native code for Emacs versions you no longer run.
+    (when (fboundp 'native-compile-prune-cache)
+      (ignore-errors (native-compile-prune-cache)))
+    (when deep
+      (let ((eln (expand-file-name "eln-cache" user-emacs-directory)))
+        (when (file-directory-p eln) (delete-directory eln t))))
+    (my/snapshots-prune)
+    (let ((broken (concat (directory-file-name package-user-dir) ".broken")))
+      (when (file-directory-p broken) (delete-directory broken t)))
+    ;; Old auto-saves (30+ days).
+    (let ((dir (expand-file-name "auto-save/" my/var-dir)))
+      (when (file-directory-p dir)
+        (dolist (f (directory-files dir t "\\`[^.]"))
+          (when (> (float-time (time-since (file-attribute-modification-time
+                                            (file-attributes f))))
+                   (* 30 24 3600))
+            (delete-file f)))))
+    (let ((after (apply #'+ (mapcar (lambda (p) (my/dir-size (cdr p))) (my/disk-places)))))
+      (message "my/clean: freed %s (now %s)"
+               (file-size-human-readable (max 0 (- before after)))
+               (file-size-human-readable after)))))
+
+;;;; Compiling the config itself
+;; Loading lisp/*.el means macro-expanding ~60 use-package forms on every
+;; start.  Byte-compiled (and then native-compiled) they load several times
+;; faster.  `load-prefer-newer' (early-init.el) makes an edited .el win over
+;; a stale .elc, and saving a file in lisp/ recompiles it.
+(defun my/compile-config ()
+  "Byte-compile lisp/*.el, then native-compile them in the background."
+  (interactive)
+  (let ((byte-compile-warnings nil)
+        (inhibit-message (not (called-interactively-p 'any)))
+        (n 0))
+    (dolist (file (directory-files my/lisp-dir t "\\.el\\'"))
+      (unless (string-prefix-p "." (file-name-nondirectory file))
+        (when (ignore-errors (byte-compile-file file))
+          (setq n (1+ n)))))
+    ;; Native code: Emacs compiles each loaded .elc in the background on
+    ;; its own (`native-comp-jit-compilation'), so nothing to do here.
+    (message "Config compiled (%d files)" n)))
+
+(defun my/recompile-config-file ()
+  "After saving a file in lisp/, recompile it quietly."
+  (when (and buffer-file-name
+             (string-suffix-p ".el" buffer-file-name)
+             (file-in-directory-p buffer-file-name my/lisp-dir))
+    (let ((byte-compile-warnings nil)
+          (inhibit-message t))
+      (ignore-errors (byte-compile-file buffer-file-name)))))
+(add-hook 'after-save-hook #'my/recompile-config-file)
 
 ;;;; Doctor
 (defconst my/doctor-tools
@@ -103,6 +225,7 @@ If anything breaks, restart Emacs and run \\[my/rollback]."
 (defun my/doctor ()
   "Show a health report of this Emacs setup."
   (interactive)
+  (require 'package)
   (let ((buf (get-buffer-create "*doctor*")))
     (with-current-buffer buf
       (let ((inhibit-read-only t))
@@ -144,6 +267,7 @@ If anything breaks, restart Emacs and run \\[my/rollback]."
           (my/doctor--line (executable-find (nth 0 tool))
                            (format "%-28s %s%s" (nth 0 tool) (nth 1 tool)
                                    (if (nth 2 tool) "  (needed)" ""))))
+        (insert "\nDisk\n" (my/disk-usage) "\n")
         (insert (format "\nStartup: %s, %d GCs.  Snapshots: %d.  Packages dir: %s\n"
                         (emacs-init-time "%.2fs") gcs-done
                         (if (file-directory-p my/snapshot-dir)

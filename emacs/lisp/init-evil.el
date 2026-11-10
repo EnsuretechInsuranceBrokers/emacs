@@ -57,8 +57,9 @@
   (evil-ex-define-cmd "Q" #'evil-quit))
 
 (use-package evil-collection               ; Vim keys in magit, dired, help, ...
-  :after evil
-  :demand t
+  :defer t
+  ;; ~50 ms to set up, so it waits for the first key press (or idle warm-up).
+  :init (my/on-first-input (lambda () (require 'evil-collection)))
   :config
   (setq evil-collection-want-unimpaired-p t ; ]b [b ]q [q, like vim-unimpaired
         evil-collection-setup-minibuffer nil)

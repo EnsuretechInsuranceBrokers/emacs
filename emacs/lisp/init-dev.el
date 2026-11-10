@@ -21,7 +21,11 @@
 (use-package treesit-auto
   :demand t
   :config
-  (setq treesit-auto-install 'prompt)
+  (setq treesit-auto-install 'prompt
+        ;; Only grammars for languages you actually use (each is 0.5-5 MB).
+        treesit-auto-langs '(c cpp go gomod python javascript typescript tsx
+                             php json yaml bash rust toml css html dockerfile
+                             cmake lua))
   (treesit-auto-add-to-auto-mode-alist 'all)
   (global-treesit-auto-mode 1))
 
@@ -128,7 +132,7 @@ works as normal.")
 
 ;;;; Format on save (apheleia: async, keeps point, skips missing formatters).
 (use-package apheleia
-  :demand t
+  :hook (my/first-file . apheleia-global-mode)
   :config
   ;; C/C++: only format when the project has a .clang-format.  Otherwise
   ;; clang-format's default style would rewrite your whole file on save.
@@ -141,8 +145,7 @@ works as normal.")
   ;; gofumpt if installed, otherwise gofmt.
   (when (executable-find "gofumpt")
     (setf (alist-get 'go-mode apheleia-mode-alist) 'gofumpt
-          (alist-get 'go-ts-mode apheleia-mode-alist) 'gofumpt))
-  (apheleia-global-mode 1))
+          (alist-get 'go-ts-mode apheleia-mode-alist) 'gofumpt)))
 
 (defun my/toggle-format-on-save ()
   "Turn format-on-save on/off in this buffer."
@@ -158,16 +161,16 @@ works as normal.")
   (add-hook hook (lambda () (add-hook 'before-save-hook #'my/eglot-organize-imports -10 t))))
 
 ;;;; Debugger (DAP).  M-x dape, or SPC d d / C-c d d.
-(use-package dape
-  :defer t
-  :commands (dape dape-breakpoint-toggle)
-  :config
+;; Installed the first time you run it (saves disk if you never debug).
+(my/lazy-command dape dape)
+(my/lazy-command dape-breakpoint-toggle dape)
+(with-eval-after-load 'dape
   (setq dape-buffer-window-arrangement 'right
         dape-inlay-hints t))
 
 ;;;; direnv / nix-shell environments per project.
 (use-package envrc
-  :if (and (executable-find "direnv") (package-installed-p 'envrc))
+  :if (and (executable-find "direnv") (my/package-p 'envrc))
   :hook (after-init . envrc-global-mode))
 
 ;;;; Evaluate elisp with an inline result overlay (Doom's eval +overlay).

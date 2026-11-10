@@ -28,7 +28,9 @@
 ;;;; Packages
 (setq package-enable-at-startup t
       package-quickstart t          ; one pre-generated autoloads file = faster boot
-      load-prefer-newer noninteractive)
+      ;; The config itself is byte- and native-compiled (M-x my/compile-config);
+      ;; this makes a newer .el win over a stale .elc after you edit it.
+      load-prefer-newer t)
 
 ;;;; Native compilation: compile quietly in the background.
 (when (featurep 'native-compile)

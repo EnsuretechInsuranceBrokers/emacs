@@ -74,7 +74,7 @@ nil:     nothing (trailing spaces are still highlighted in code)."
 
 ;;;; Paredit for Lisps
 (use-package paredit
-  :if (and my/use-paredit (package-installed-p 'paredit))
+  :if (and my/use-paredit (my/package-p 'paredit))
   :hook ((emacs-lisp-mode lisp-mode lisp-data-mode scheme-mode clojure-mode racket-mode)
          . my/paredit-on)
   :preface

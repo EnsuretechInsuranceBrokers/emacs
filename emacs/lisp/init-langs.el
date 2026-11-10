@@ -12,8 +12,8 @@
 (with-eval-after-load 'c-ts-mode
   (keymap-set c-ts-base-mode-map "C-c C-o" #'ff-find-other-file))
 
-;;;; Go (tabs, like gofmt)
-(use-package go-mode :defer t)
+;;;; Go (tabs, like gofmt).  go-ts-mode is built in; go-mode only without the grammar.
+(my/lazy-mode "\\.go\\'" go-mode nil go-ts-mode go)
 (setq go-ts-mode-indent-offset 4)
 (dolist (hook '(go-mode-hook go-ts-mode-hook))
   (add-hook hook (lambda () (setq-local indent-tabs-mode t tab-width 4))))
@@ -52,32 +52,32 @@
   (setq markdown-fontify-code-blocks-natively t
         markdown-command (if (executable-find "pandoc") "pandoc" "markdown")))
 
-;;;; Config formats
-(use-package yaml-mode :defer t)
-(use-package nix-mode :mode "\\.nix\\'")
-(use-package dockerfile-mode :defer t)
+;;;; Everything else: installed the first time you open such a file.
+;; Built-in tree-sitter modes are used when the grammar is there, so most of
+;; these never install anything.  `my/extra-languages' nil = don't even try.
+(defcustom my/extra-languages t
+  "Open (and install on first use) modes for less common languages."
+  :type 'boolean :group 'my)
+
 (add-to-list 'auto-mode-alist '("\\.env\\'" . conf-mode))
 (add-to-list 'auto-mode-alist '("\\.env\\..*\\'" . conf-mode))
 
-;;;; More languages.  Each one costs nothing until you open such a file.
-;; Turn the whole group off with (setq my/extra-languages nil) in personal.el.
-(defcustom my/extra-languages t
-  "Install modes for Rust, Zig, Lua, Haskell, Kotlin, GLSL, CMake, TOML..."
-  :type 'boolean :group 'my)
-
 (when my/extra-languages
-  (use-package rust-mode :defer t
-    :config (setq rust-format-on-save nil))      ; apheleia formats with rustfmt
-  (use-package zig-mode :defer t)
-  (use-package lua-mode :defer t)
-  (use-package haskell-mode :defer t
-    :hook (haskell-mode . interactive-haskell-mode))
-  (use-package kotlin-mode :defer t)
-  (use-package glsl-mode :defer t)
-  (use-package cmake-mode :defer t)
-  (use-package csv-mode :defer t)
-  (use-package nginx-mode :defer t)
-  (use-package graphviz-dot-mode :defer t))   ; TOML, Bash, CSS...: tree-sitter modes via treesit-auto
+  (my/lazy-mode "\\.ya?ml\\'" yaml-mode nil yaml-ts-mode yaml)
+  (my/lazy-mode "\\(?:Dockerfile\\|Containerfile\\)\\(?:\\..*\\)?\\'" dockerfile-mode nil dockerfile-ts-mode dockerfile)
+  (my/lazy-mode "\\.rs\\'" rust-mode nil rust-ts-mode rust)
+  (my/lazy-mode "\\.lua\\'" lua-mode nil lua-ts-mode lua)
+  (my/lazy-mode "\\.nix\\'" nix-mode)
+  (my/lazy-mode "\\.zig\\'" zig-mode)
+  (my/lazy-mode "\\.hs\\'" haskell-mode)
+  (my/lazy-mode "\\.kts?\\'" kotlin-mode)
+  (my/lazy-mode "\\.\\(?:glsl\\|vert\\|frag\\|geom\\|comp\\)\\'" glsl-mode)
+  (my/lazy-mode "\\.[ct]sv\\'" csv-mode)
+  (my/lazy-mode "/nginx/.*\\.conf\\'" nginx-mode)
+  (my/lazy-mode "\\.\\(?:dot\\|gv\\)\\'" graphviz-dot-mode)
+  (with-eval-after-load 'rust-mode (setq rust-format-on-save nil)) ; apheleia formats
+  (add-hook 'haskell-mode-hook #'interactive-haskell-mode))
+;; TOML, Bash, CSS, CMake, JSON...: built-in tree-sitter modes via treesit-auto.
 
 ;;;; Shell
 (setq sh-basic-offset 4)

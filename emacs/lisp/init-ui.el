@@ -56,12 +56,11 @@
 ;; Shows which key to press next after a prefix (C-x, C-c, SPC...).
 ;; Built into Emacs 30; installed from GNU ELPA on 29.
 (use-package which-key
-  :demand t
+  :hook (my/first-input . which-key-mode)
   :config
   (setq which-key-idle-delay 0.4
         which-key-idle-secondary-delay 0.05
-        which-key-sort-order #'which-key-key-order-alpha)
-  (which-key-mode 1))
+        which-key-sort-order #'which-key-key-order-alpha))
 
 (provide 'init-ui)
 ;;; init-ui.el ends here

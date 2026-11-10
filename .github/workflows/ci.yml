@@ -1,4 +1,4 @@
-# Loads the config on several Emacs versions, installs every package from
+# Loads the config (emacs/) on several Emacs versions, installs every package from
 # the archives, and runs the smoke tests.  Runs on every push and once a
 # week, so a package that breaks upstream (or a new Emacs release) shows
 # up here before it surprises you.
@@ -19,6 +19,9 @@ jobs:
       matrix:
         emacs: ["29.4", "30.1", "snapshot"]
     continue-on-error: ${{ matrix.emacs == 'snapshot' }}
+    defaults:
+      run:
+        working-directory: emacs
     steps:
       - uses: actions/checkout@v4
       - uses: purcell/setup-emacs@master
@@ -31,18 +34,25 @@ jobs:
           if grep -q "Failed to install" install.log; then
             echo "::error::some packages failed to install"; grep "Failed to install" install.log; exit 1
           fi
-      - name: Smoke tests
+      - name: Smoke tests (config from source)
         run: ./test/run.sh
       - name: Byte-compile config (catches typos and wrong arguments)
         run: |
           emacs --batch --init-directory "$PWD" -l early-init.el -l init.el \
-            --eval '(setq byte-compile-error-on-warn nil)' \
             -f batch-byte-compile lisp/*.el 2>&1 | tee compile.log
           if grep -E "Error:" compile.log; then exit 1; fi
-          rm -f lisp/*.elc
+      - name: Smoke tests (compiled config, the fast path setup.sh uses)
+        run: ./test/run.sh
+      - name: Disk usage
+        run: |
+          emacs --batch --init-directory "$PWD" -l early-init.el -l init.el \
+            --eval '(princ (my/disk-usage))'
 
   shell:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: emacs
     steps:
       - uses: actions/checkout@v4
       - name: shellcheck

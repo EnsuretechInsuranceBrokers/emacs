@@ -51,10 +51,14 @@
   :config
   (add-to-list 'yas-snippet-dirs (expand-file-name "snippets" user-emacs-directory))
   (yas-reload-all))
-(use-package yasnippet-snippets :after yasnippet)
+;; (yasnippet-snippets, thousands of generic snippets, is left out: ~6 MB
+;; you'd rarely use.  M-x package-install yasnippet-snippets to add it.)
 
 ;;;; Folding (hideshow).  C-c f toggles the block at point, C-c F all.
-(add-hook 'prog-mode-hook #'hs-minor-mode)
+;; hideshow errors in modes without comment syntax, so turn it on carefully.
+(defun my/hs-minor-mode-maybe ()
+  (ignore-errors (hs-minor-mode 1)))
+(add-hook 'prog-mode-hook #'my/hs-minor-mode-maybe)
 (defun my/toggle-fold-all ()
   "Fold every block, or unfold all if something is folded."
   (interactive)

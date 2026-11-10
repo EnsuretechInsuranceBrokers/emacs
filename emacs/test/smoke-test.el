@@ -9,6 +9,11 @@
 
 (require 'ert)
 
+;; Features load on the first key press / first file (init-perf.el).
+;; Tests never press a key, so trigger both now.
+(my/first-file)
+(my/first-input)
+
 (defmacro my-test--with-file (name content &rest body)
   "Visit a fresh file NAME with CONTENT in a temp dir, run BODY there."
   (declare (indent 2))
@@ -255,6 +260,60 @@
             (kill-buffer))
           (should (zerop (call-process "git" nil nil nil "rev-parse" "HEAD"))))
       (delete-directory dir t))))
+
+;;;; Speed and disk
+(ert-deftest my-test-deferred-hooks-ran ()
+  (should my/first-input-done)
+  (should my/first-file-done)
+  (should (null my/first-input-hook))
+  ;; Late additions run right away instead of being lost.
+  (let (ran) (my/on-first-input (lambda () (setq ran t))) (should ran)))
+
+(ert-deftest my-test-startup-shortcuts ()
+  (should (eq initial-major-mode 'fundamental-mode))
+  (should load-prefer-newer)
+  (should save-place-mode))
+
+(ert-deftest my-test-lazy-mode-routing ()
+  (should (eq (cdr (assoc "\\.go\\'" auto-mode-alist)) 'my/lazy-go-mode))
+  (should (rassq 'my/lazy-yaml-mode auto-mode-alist))
+  ;; No grammar, no network: falls back to prog-mode instead of erroring.
+  (cl-letf (((symbol-function 'treesit-language-available-p) (lambda (&rest _) nil))
+            ((symbol-function 'my/lazy-install) (lambda (_) nil)))
+    (with-temp-buffer (my/lazy-go-mode) (should (eq major-mode 'prog-mode)))))
+
+(ert-deftest my-test-lazy-command-stub ()
+  (should (fboundp 'dape))
+  (should (commandp 'docker)))
+
+(ert-deftest my-test-hardlink-snapshot ()
+  (skip-unless (memq system-type '(gnu/linux darwin berkeley-unix)))
+  (let* ((src (make-temp-file "emacs-test-src" t))
+         (dest (concat src "-copy")))
+    (unwind-protect
+        (progn
+          (make-directory (expand-file-name "pkg-1.0" src))
+          (with-temp-file (expand-file-name "pkg-1.0/a.el" src) (insert "x"))
+          (my/copy-tree-cheap src dest)
+          (let ((a (file-attributes (expand-file-name "pkg-1.0/a.el" src)))
+                (b (file-attributes (expand-file-name "pkg-1.0/a.el" dest))))
+            (should b)
+            ;; Same inode = hard link = no extra disk.
+            (when (eq system-type 'gnu/linux)
+              (should (equal (file-attribute-inode-number a) (file-attribute-inode-number b))))))
+      (delete-directory src t)
+      (when (file-directory-p dest) (delete-directory dest t)))))
+
+(ert-deftest my-test-disk-usage-report ()
+  (should (string-match-p "total" (my/disk-usage))))
+
+(ert-deftest my-test-huge-file-drops-extras ()
+  (my-test--with-file "big.log" (make-string (1+ (* 4 my/c-big-file-size)) ?x)
+    (should-not (bound-and-true-p display-line-numbers-mode))))
+
+(ert-deftest my-test-treesit-langs-limited ()
+  (skip-unless (package-installed-p 'treesit-auto))
+  (should (< (length treesit-auto-langs) 25)))
 
 ;;;; Doctor
 (ert-deftest my-test-doctor-runs ()

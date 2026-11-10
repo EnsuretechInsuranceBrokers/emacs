@@ -18,14 +18,14 @@
 
 ;;;; Minibuffer
 (use-package vertico
-  :demand t
+  :hook (my/first-input . vertico-mode)
   :config
   (setq vertico-cycle t
         vertico-count 15
         vertico-resize nil
         vertico-scroll-margin 2)
   ;; Sorted by history (savehist): recently used things float to the top.
-  (vertico-mode 1))
+  )
 
 ;; Ido-style file navigation: DEL on "~/src/" goes up a whole directory,
 ;; and typing "~/" or "/" after a path jumps there.
@@ -39,7 +39,8 @@
   :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
 
 (use-package orderless
-  :demand t
+  :defer t
+  :init (add-hook 'my/first-input-hook (lambda () (require 'orderless)))
   :config
   ;; "foo bar" = both words, any order.  Prefix a word with ! to exclude
   ;; it, ~ for flex (ido-style "icmp" -> "init-completion"), ^ to anchor.
@@ -49,9 +50,8 @@
         orderless-matching-styles '(orderless-literal orderless-regexp orderless-initialism)))
 
 (use-package marginalia
-  :demand t
-  :bind (:map minibuffer-local-map ("M-A" . marginalia-cycle))
-  :config (marginalia-mode 1))
+  :hook (my/first-input . marginalia-mode)
+  :bind (:map minibuffer-local-map ("M-A" . marginalia-cycle)))
 
 (use-package consult
   :bind (;; Buffers & files
@@ -122,7 +122,7 @@
 
 ;;;; In-buffer completion (replaces company)
 (use-package corfu
-  :demand t
+  :hook (my/first-input . global-corfu-mode)
   :bind (:map corfu-map
               ("TAB"     . corfu-next)
               ([tab]     . corfu-next)
@@ -138,20 +138,19 @@
         corfu-quit-no-match 'separator
         corfu-on-exact-match nil
         corfu-popupinfo-delay '(0.5 . 0.2))
-  (global-corfu-mode 1)
   (corfu-history-mode 1)
   (corfu-popupinfo-mode 1)
   (add-to-list 'savehist-additional-variables 'corfu-history))
 
 ;; Emacs < 31 cannot draw child frames in a terminal; this draws the popup with text.
 (use-package corfu-terminal
-  :if (and (< emacs-major-version 31) (package-installed-p 'corfu-terminal))
+  :if (and (< emacs-major-version 31) (my/package-p 'corfu-terminal))
   :after corfu
   :config (corfu-terminal-mode 1))
 
 (use-package cape
-  :demand t
-  :config
+  :defer t
+  :init
   ;; Fallbacks after the mode's own completion (LSP, elisp...).
   (add-hook 'completion-at-point-functions #'cape-file)
   (add-hook 'completion-at-point-functions #'cape-dabbrev 90))

@@ -6,7 +6,8 @@ set -euo pipefail
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 extra=()
 if [ "${OFFLINE:-0}" = 1 ]; then
-  extra=(--eval "(progn (require 'use-package-ensure) (setq use-package-ensure-function #'ignore))")
+  # Survives init-package.el redefining the function.
+  extra=(--eval "(advice-add 'my/use-package-ensure :override #'ignore)")
 fi
 exec "${EMACS:-emacs}" --batch --init-directory "$dir" \
   ${extra[@]+"${extra[@]}"} \

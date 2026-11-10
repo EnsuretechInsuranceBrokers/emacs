@@ -17,7 +17,7 @@
       help-window-select t                ; jump into *Help* so q closes it
       enable-recursive-minibuffers t
       read-extended-command-predicate #'command-completion-default-include-p)
-(minibuffer-depth-indicate-mode 1)
+(add-hook 'my/first-input-hook #'minibuffer-depth-indicate-mode)
 
 ;;;; Files: no backups/lockfiles, auto-saves out of the project tree
 (setq make-backup-files nil
@@ -34,16 +34,16 @@
 (setq auto-revert-verbose nil
       auto-revert-avoid-polling t
       global-auto-revert-non-file-buffers t)
-(global-auto-revert-mode 1)
+(add-hook 'my/first-file-hook #'global-auto-revert-mode)
 
 ;;;; History that survives restarts
 (setq savehist-file (expand-file-name "savehist" my/var-dir)
       history-length 1000
       history-delete-duplicates t
-      savehist-additional-variables '(kill-ring search-ring regexp-search-ring compile-command)
+      savehist-additional-variables '(search-ring regexp-search-ring compile-command) ; not kill-ring: big, may hold secrets
       save-place-file (expand-file-name "places" my/var-dir)
       recentf-save-file (expand-file-name "recentf" my/var-dir)
-      recentf-max-saved-items 500
+      recentf-max-saved-items 300
       recentf-auto-cleanup 'never
       recentf-exclude `(,(regexp-quote (expand-file-name "elpa/" user-emacs-directory))
                         ,(regexp-quote my/var-dir)
@@ -58,9 +58,11 @@
       tramp-persistency-file-name (expand-file-name "tramp" my/var-dir)
       multisession-directory (expand-file-name "multisession/" my/var-dir)
       mc/list-file (expand-file-name "mc-lists.el" my/var-dir))
-(savehist-mode 1)
-(save-place-mode 1)
-(recentf-mode 1)
+(save-place-mode 1)                          ; must be on before the first file
+(add-hook 'my/first-input-hook #'savehist-mode)
+(add-hook 'my/first-input-hook #'recentf-mode)
+(add-hook 'my/first-file-hook
+          (lambda () (recentf-mode 1) (recentf-track-opened-file))) ; count this first file too
 
 ;;;; Editing
 (setq-default tab-width 4
@@ -78,8 +80,8 @@
       show-paren-delay 0
       show-paren-context-when-offscreen 'overlay
       blink-matching-paren nil)
-(delete-selection-mode 1)   ; typing replaces the selection
-(electric-pair-mode 1)      ; auto-close brackets/quotes
+(add-hook 'my/first-input-hook #'delete-selection-mode) ; typing replaces the selection
+(add-hook 'my/first-input-hook #'electric-pair-mode)    ; auto-close brackets/quotes
 
 ;; Strip trailing whitespace on save, except in markdown (two trailing
 ;; spaces there are a line break).
@@ -98,15 +100,15 @@
       mouse-wheel-scroll-amount '(3 ((shift) . hscroll))
       mouse-wheel-progressive-speed nil)
 (when (fboundp 'pixel-scroll-precision-mode)
-  (pixel-scroll-precision-mode 1))
+  (add-hook 'my/first-input-hook #'pixel-scroll-precision-mode))
 
 ;;;; Buffers and windows
 (setq uniquify-buffer-name-style 'forward
       switch-to-buffer-obey-display-actions t
       split-width-threshold 160
       split-height-threshold nil)       ; prefer side-by-side splits
-(winner-mode 1)                          ; C-c <left> undoes a window change
-(repeat-mode 1)                          ; C-x o o o, C-x { { {, ...
+(add-hook 'my/first-input-hook #'winner-mode) ; C-c <left> undoes a window change
+(add-hook 'my/first-input-hook #'repeat-mode) ; C-x o o o, C-x { { {, ...
 
 ;;;; Search
 (setq isearch-lazy-count t               ; "3/17" in the prompt
@@ -123,7 +125,7 @@
 
 ;;;; macOS / daemon: get $PATH from your shell so gopls, clangd, node... are found.
 (use-package exec-path-from-shell
-  :if (and (or (memq window-system '(mac ns)) (daemonp)) (package-installed-p 'exec-path-from-shell))
+  :if (and (or (memq window-system '(mac ns)) (daemonp)) (my/package-p 'exec-path-from-shell))
   :demand t
   :config
   (setq exec-path-from-shell-arguments '("-l"))

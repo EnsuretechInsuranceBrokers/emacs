@@ -1,27 +1,4 @@
-# Everything Emacs generates at runtime
-/var/
-/elpa/
-/eln-cache/
-/tree-sitter/
-/auto-save-list/
-/transient/
-/url/
-/eshell/
-/package-quickstart.el
-/package-quickstart.elc
-/custom.el
-/history
-/recentf
-/savehist
-/places
-/projects
-/bookmarks
-/.lsp-session-*
-/server/
-*.elc
 *~
 \#*\#
 .#*
-
-# Your machine-local overrides
-/personal.el
+.DS_Store

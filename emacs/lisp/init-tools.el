@@ -38,7 +38,7 @@
 ;;;; Terminal
 ;; vterm is a real terminal (needs cmake + libtool to build the first time).
 (use-package vterm
-  :if (and module-file-suffix (not (eq system-type 'windows-nt)) (package-installed-p 'vterm))
+  :if (and module-file-suffix (not (eq system-type 'windows-nt)) (my/package-p 'vterm))
   :commands (vterm vterm-other-window)
   :config
   (setq vterm-max-scrollback 10000
@@ -54,8 +54,8 @@
                                      (directory-file-name default-directory))))
       (eshell t))))
 
-;;;; Docker
-(use-package docker :commands docker)
+;;;; Docker UI: installed the first time you run M-x docker.
+(my/lazy-command docker docker)
 
 ;;;; Org
 (use-package org
@@ -89,7 +89,7 @@
 ;; For zero startup time run Emacs as a daemon: `emacs --daemon', then
 ;; `emacsclient -c' (alias it as `e').
 (when my/start-server
-  (add-hook 'after-init-hook
+  (add-hook 'my/first-input-hook
             (lambda ()
               (require 'server)
               (unless (or (daemonp) (server-running-p))
