@@ -68,6 +68,10 @@ Common variants:
 You can re-run it any time: steps that are already done are skipped.
 Supports macOS (Homebrew), Ubuntu/Debian, Fedora, Arch and openSUSE.
 
+**On Fedora?** [`fedora/rice.sh`](fedora/README.md) does all of this, plus a
+matching dark GNOME desktop, gruber-darker terminal/tmux/zsh, and systemd
+timers that update Emacs on the fourth Sunday of every month.
+
 ## What the script does
 
 1. **Emacs 29+.** Uses yours if it's new enough. On Ubuntu it adds the

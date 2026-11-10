@@ -46,6 +46,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: shellcheck
-        run: shellcheck -S warning setup.sh test/run.sh
+        run: shellcheck -S warning setup.sh test/run.sh fedora/rice.sh
       - name: setup.sh dry run
         run: ./setup.sh --dry-run -y --no-packages
+      - name: fedora/rice.sh dry run
+        run: ./fedora/rice.sh --dry-run --force -y
+      - name: systemd units
+        run: |
+          mkdir -p /tmp/units
+          for f in fedora/systemd/*; do sed "s|@REPO@|$PWD|g" "$f" > "/tmp/units/$(basename "$f")"; done
+          # dnf / nm-online don't exist on Ubuntu runners; check syntax + calendar only
+          systemd-analyze verify /tmp/units/* 2>&1 | grep -v "is not executable" | tee verify.log
+          if [ -s verify.log ]; then exit 1; fi
+          systemd-analyze calendar "Sun *-*-22..28 03:30:00" --iterations=3
