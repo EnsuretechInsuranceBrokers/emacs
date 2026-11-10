@@ -18,6 +18,10 @@
 ;;;; Tree-sitter: faster, more accurate highlighting for each language.
 ;; treesit-auto picks the *-ts-mode when a grammar is installed and
 ;; offers to install grammars the first time (needs a C compiler).
+;; Emacs 31+ can offer to install a missing grammar itself.  Same rule as
+;; treesit-auto below: ask interactively, never in batch mode.
+(setq treesit-auto-install-grammar (if noninteractive 'never 'ask))
+
 (use-package treesit-auto
   :demand t
   :config
