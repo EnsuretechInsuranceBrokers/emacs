@@ -1,0 +1,135 @@
+;;; init-defaults.el --- Better built-in defaults -*- lexical-binding: t; -*-
+
+;;; Code:
+
+;;;; Identity
+(setq user-full-name "Utkarsh")
+
+;;;; Quiet, fast prompts
+(setq ring-bell-function #'ignore
+      use-short-answers t                 ; y/n instead of yes/no
+      confirm-kill-emacs nil
+      confirm-nonexistent-file-or-buffer nil
+      kill-buffer-query-functions (delq 'process-kill-buffer-query-function
+                                        kill-buffer-query-functions)
+      initial-scratch-message nil
+      echo-keystrokes 0.02                ; show prefix keys immediately
+      help-window-select t                ; jump into *Help* so q closes it
+      enable-recursive-minibuffers t
+      read-extended-command-predicate #'command-completion-default-include-p)
+(minibuffer-depth-indicate-mode 1)
+
+;;;; Files: no backups/lockfiles, auto-saves out of the project tree
+(setq make-backup-files nil
+      create-lockfiles nil
+      auto-save-default t
+      auto-save-list-file-prefix (expand-file-name "auto-save/.saves-" my/var-dir)
+      auto-save-file-name-transforms
+      `((".*" ,(expand-file-name "auto-save/" my/var-dir) t))
+      require-final-newline t
+      delete-by-moving-to-trash t)
+(make-directory (expand-file-name "auto-save/" my/var-dir) t)
+
+;; Reload files changed on disk (git checkout, formatters...).
+(setq auto-revert-verbose nil
+      auto-revert-avoid-polling t
+      global-auto-revert-non-file-buffers t)
+(global-auto-revert-mode 1)
+
+;;;; History that survives restarts
+(setq savehist-file (expand-file-name "savehist" my/var-dir)
+      history-length 1000
+      history-delete-duplicates t
+      savehist-additional-variables '(kill-ring search-ring regexp-search-ring compile-command)
+      save-place-file (expand-file-name "places" my/var-dir)
+      recentf-save-file (expand-file-name "recentf" my/var-dir)
+      recentf-max-saved-items 500
+      recentf-auto-cleanup 'never
+      recentf-exclude `(,(regexp-quote (expand-file-name "elpa/" user-emacs-directory))
+                        ,(regexp-quote my/var-dir)
+                        "/tmp/" "COMMIT_EDITMSG\\'" "/\\.git/")
+      bookmark-default-file (expand-file-name "bookmarks" my/var-dir)
+      project-list-file (expand-file-name "projects" my/var-dir)
+      transient-history-file (expand-file-name "transient/history.el" my/var-dir)
+      transient-levels-file (expand-file-name "transient/levels.el" my/var-dir)
+      transient-values-file (expand-file-name "transient/values.el" my/var-dir)
+      eshell-directory-name (expand-file-name "eshell/" my/var-dir)
+      url-configuration-directory (expand-file-name "url/" my/var-dir)
+      tramp-persistency-file-name (expand-file-name "tramp" my/var-dir)
+      multisession-directory (expand-file-name "multisession/" my/var-dir)
+      mc/list-file (expand-file-name "mc-lists.el" my/var-dir))
+(savehist-mode 1)
+(save-place-mode 1)
+(recentf-mode 1)
+
+;;;; Editing
+(setq-default tab-width 4
+              indent-tabs-mode nil
+              fill-column 80
+              truncate-lines t)
+(setq undo-limit 80000000
+      undo-strong-limit 120000000
+      undo-outer-limit 360000000
+      kill-ring-max 500
+      kill-do-not-save-duplicates t
+      save-interprogram-paste-before-kill t
+      mouse-yank-at-point t
+      sentence-end-double-space nil
+      show-paren-delay 0
+      show-paren-context-when-offscreen 'overlay
+      blink-matching-paren nil)
+(delete-selection-mode 1)   ; typing replaces the selection
+(electric-pair-mode 1)      ; auto-close brackets/quotes
+
+;; Strip trailing whitespace on save, except in markdown (two trailing
+;; spaces there are a line break).
+(defun my/delete-trailing-whitespace ()
+  (unless (derived-mode-p 'markdown-mode)
+    (delete-trailing-whitespace)))
+(add-hook 'before-save-hook #'my/delete-trailing-whitespace)
+
+;;;; Scrolling: keep 8 lines of context, never jump half a screen.
+(setq scroll-margin 8
+      scroll-conservatively 101
+      scroll-preserve-screen-position t
+      next-screen-context-lines 4
+      hscroll-margin 4
+      hscroll-step 1
+      mouse-wheel-scroll-amount '(3 ((shift) . hscroll))
+      mouse-wheel-progressive-speed nil)
+(when (fboundp 'pixel-scroll-precision-mode)
+  (pixel-scroll-precision-mode 1))
+
+;;;; Buffers and windows
+(setq uniquify-buffer-name-style 'forward
+      switch-to-buffer-obey-display-actions t
+      split-width-threshold 160
+      split-height-threshold nil)       ; prefer side-by-side splits
+(winner-mode 1)                          ; C-c <left> undoes a window change
+(repeat-mode 1)                          ; C-x o o o, C-x { { {, ...
+
+;;;; Search
+(setq isearch-lazy-count t               ; "3/17" in the prompt
+      lazy-count-prefix-format "%s/%s "
+      search-whitespace-regexp ".*?"     ; "foo bar" matches "foo ... bar"
+      isearch-allow-scroll t)
+
+;;;; macOS
+(when (eq system-type 'darwin)
+  (setq mac-command-modifier 'meta      ; Cmd is Meta, like Alt on Linux
+        mac-option-modifier 'super
+        ns-use-proxy-icon nil
+        ns-pop-up-frames nil))
+
+;;;; macOS / daemon: get $PATH from your shell so gopls, clangd, node... are found.
+(use-package exec-path-from-shell
+  :if (or (memq window-system '(mac ns)) (daemonp))
+  :demand t
+  :config
+  (setq exec-path-from-shell-arguments '("-l"))
+  (dolist (var '("GOPATH" "GOROOT" "NVM_DIR" "LANG" "LC_ALL"))
+    (add-to-list 'exec-path-from-shell-variables var))
+  (exec-path-from-shell-initialize))
+
+(provide 'init-defaults)
+;;; init-defaults.el ends here
