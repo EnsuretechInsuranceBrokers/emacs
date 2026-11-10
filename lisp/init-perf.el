@@ -44,6 +44,18 @@
               bidi-paragraph-direction 'left-to-right
               cursor-in-non-selected-windows nil)
 
+;; Big files: skip the heavy machinery (LSP, whitespace-mode, formatting)
+;; and open C/C++ in rexim's fast simpc-mode.
+(defcustom my/c-big-file-size (* 256 1024)
+  "Files bigger than this many bytes count as \"big\".
+Big C/C++ files open in simpc-mode (see `my/c-mode') and skip the
+language server, whitespace-mode and format-on-save."
+  :type 'integer :group 'my)
+
+(defun my/big-buffer-p ()
+  "Non-nil if this buffer is too big for the heavy machinery."
+  (> (buffer-size) my/c-big-file-size))
+
 ;; Huge one-line files (minified JS, logs) won't freeze Emacs.
 (global-so-long-mode 1)
 

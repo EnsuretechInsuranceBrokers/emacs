@@ -18,7 +18,7 @@
 (keymap-global-set "C-c c"   #'compile)
 (keymap-global-set "C-c r"   #'recompile)               ; your SPC r
 (keymap-global-set "C-c x"   #'my/run-file)             ; your SPC m r
-(keymap-global-set "C-c i"   #'my/cp-open-input)
+(keymap-global-set "C-c i i" #'my/cp-open-input)          ; C-c i m = imenu (rexim)
 (keymap-global-set "C-c t"   #'my/terminal)
 (keymap-global-set "C-c d d" #'dape)
 (keymap-global-set "C-c d b" #'dape-breakpoint-toggle)

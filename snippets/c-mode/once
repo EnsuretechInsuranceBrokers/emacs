@@ -1,0 +1,10 @@
+# -*- mode: snippet -*-
+# name: include guard
+# key: once
+# --
+#ifndef ${1:`(upcase (replace-regexp-in-string "[^[:alnum:]]" "_" (file-name-nondirectory (or (buffer-file-name) "header.h"))))`}
+#define $1
+
+$0
+
+#endif // $1

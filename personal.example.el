@@ -9,6 +9,21 @@
 ;; (setq my/fonts '("Iosevka" "JetBrains Mono")
 ;;       my/font-size 18)
 
+;; C/C++ mode: 'auto (tree-sitter, simpc for huge files), 'simpc (exactly
+;; like rexim), or 'cc (never simpc).
+;; (setq my/c-mode 'simpc)
+
+;; Draw every space as a dot, like rexim's streams.  'light (default) or nil.
+;; (setq my/whitespace-style 'rexim)
+
+;; No paredit in Lisp buffers / no extra language modes.
+;; (setq my/use-paredit nil
+;;       my/extra-languages nil)
+
+;; Autocommit: commit only (don't push) by default, wait longer.
+;; (setq my/autocommit-push nil
+;;       my/autocommit-delay 30)
+
 ;; Don't start an Emacs server.
 ;; (setq my/start-server nil)
 

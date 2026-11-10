@@ -145,7 +145,7 @@
 
 ;; Emacs < 31 cannot draw child frames in a terminal; this draws the popup with text.
 (use-package corfu-terminal
-  :if (< emacs-major-version 31)
+  :if (and (< emacs-major-version 31) (package-installed-p 'corfu-terminal))
   :after corfu
   :config (corfu-terminal-mode 1))
 

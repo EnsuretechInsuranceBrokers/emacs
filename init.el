@@ -10,7 +10,12 @@
 ;;   early-init.el       startup speed, frame setup
 ;;   init.el             this file: options + module loading
 ;;   lisp/init-*.el      one file per topic
+;;   lisp/my-*.el        small self-contained features (autocommit)
+;;   site-lisp/          bundled third-party code (simpc-mode, MIT)
 ;;   personal.el         your machine-local overrides (git-ignored)
+;;   test/               smoke tests: ./test/run.sh
+;;
+;; Health check: M-x my/doctor.  Upgrade safely: M-x my/upgrade.
 ;;
 ;; Needs Emacs 29.1 or newer.
 
@@ -67,9 +72,11 @@ Nil: classic Emacs keys, like rexim/Tsoding."
 (require 'init-dev)         ; eglot (LSP), tree-sitter, flymake, format
 (require 'init-compile)     ; compile loop, C/C++ runners, artisan
 (require 'init-langs)       ; per-language settings
+(require 'init-rexim)       ; rexim's habits: simpc, whitespace, his keys
 (require 'init-git)         ; magit, diff-hl
 (require 'init-tools)       ; dired, vterm, docker, dape, org
 (require 'init-keys)        ; global keymap + leader
+(require 'init-maint)       ; M-x my/doctor, my/upgrade, my/rollback
 
 (when (file-exists-p custom-file)
   (load custom-file nil t))

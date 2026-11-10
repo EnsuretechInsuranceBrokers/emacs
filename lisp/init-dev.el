@@ -31,14 +31,18 @@
     go-mode go-ts-mode go-mod-ts-mode
     python-mode python-ts-mode
     js-mode js-ts-mode typescript-ts-mode tsx-ts-mode
-    php-mode php-ts-mode)
+    php-mode php-ts-mode
+    simpc-mode
+    rust-mode rust-ts-mode zig-mode haskell-mode lua-mode lua-ts-mode)
   "Major modes that start a language server automatically.
 If the server is not installed eglot prints one warning and the buffer
 works as normal.")
 
 (defun my/eglot-maybe-ensure ()
-  "Start eglot for local file buffers (not for scratch or remote files)."
-  (when (and buffer-file-name (not (file-remote-p buffer-file-name)))
+  "Start eglot for local file buffers (not scratch, remote or huge files)."
+  (when (and buffer-file-name
+             (not (file-remote-p buffer-file-name))
+             (not (my/big-buffer-p)))
     (eglot-ensure)))
 
 (dolist (mode my/eglot-modes)
@@ -86,7 +90,7 @@ works as normal.")
                                           ("pyright-langserver" "--stdio")
                                           "pylsp" "ruff-lsp"))))
   (add-to-list 'eglot-server-programs
-               '((c-mode c-ts-mode c++-mode c++-ts-mode)
+               '((c-mode c-ts-mode c++-mode c++-ts-mode (simpc-mode :language-id "c"))
                  . ("clangd" "--background-index" "--clang-tidy"
                     "--header-insertion=never" "--completion-style=detailed"
                     "-j=4")))
@@ -126,6 +130,14 @@ works as normal.")
 (use-package apheleia
   :demand t
   :config
+  ;; C/C++: only format when the project has a .clang-format.  Otherwise
+  ;; clang-format's default style would rewrite your whole file on save.
+  (setf (alist-get 'simpc-mode apheleia-mode-alist) 'clang-format)
+  (defun my/apheleia-inhibit-p ()
+    (or (my/big-buffer-p)
+        (and (my/c-like-kind)
+             (not (locate-dominating-file default-directory ".clang-format")))))
+  (add-hook 'apheleia-inhibit-functions #'my/apheleia-inhibit-p)
   ;; gofumpt if installed, otherwise gofmt.
   (when (executable-find "gofumpt")
     (setf (alist-get 'go-mode apheleia-mode-alist) 'gofumpt

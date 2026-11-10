@@ -5,6 +5,8 @@
 #   ./setup.sh --evil          same, with Vim keys + SPC leader
 #   ./setup.sh --minimal       Emacs + core tools + config only
 #   ./setup.sh --dry-run       print what would run, change nothing
+#   ./setup.sh --update        later: pull this repo + upgrade packages (with snapshot)
+#   ./setup.sh --doctor        health report: what's installed, what's missing
 #   ./setup.sh --help          all options
 #
 # Works on macOS (Homebrew), Ubuntu/Debian (apt), Fedora (dnf), Arch (pacman),
@@ -19,7 +21,7 @@ MIN_EMACS=29
 
 # ---------------------------------------------------------------- options
 DO_EMACS=1 DO_TOOLS=1 DO_FONT=1 DO_LSP=1 DO_PACKAGES=1
-EVIL=0 DAEMON=0 KEYBOARD=0 DRY=0 YES=0
+EVIL=0 DAEMON=0 KEYBOARD=0 DRY=0 YES=0 MODE=install
 
 usage() {
   sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
@@ -34,6 +36,8 @@ Options:
   --no-packages   don't pre-download Emacs packages (Emacs does it on first start)
   --daemon        start Emacs as a background service at login (instant emacsclient)
   --keyboard      Caps Lock -> Ctrl and a fast key repeat rate (GNOME/macOS)
+  --update        pull the config repo, snapshot + upgrade packages, update grammars
+  --doctor        print a health report and exit
   -y, --yes       don't ask before using sudo
   --dry-run       print the commands instead of running them
 EOF
@@ -50,6 +54,8 @@ for arg in "$@"; do
     --no-packages) DO_PACKAGES=0 ;;
     --daemon) DAEMON=1 ;;
     --keyboard) KEYBOARD=1 ;;
+    --update) MODE=update ;;
+    --doctor) MODE=doctor ;;
     -y|--yes) YES=1 ;;
     --dry-run) DRY=1 ;;
     -h|--help) usage; exit 0 ;;
@@ -77,6 +83,34 @@ try() {
 SUDO=""
 if [ "$(id -u)" != 0 ] && have sudo; then SUDO="sudo"; fi
 as_root() { if [ -n "$SUDO" ]; then run $SUDO "$@"; else run "$@"; fi; }
+
+# ---------------------------------------------------------------- update / doctor
+batch_emacs() {   # batch_emacs ELISP: load the config headless and evaluate ELISP
+  emacs --batch --init-directory "$TARGET" \
+    -l "$TARGET/early-init.el" -l "$TARGET/init.el" --eval "$1"
+}
+if [ "$MODE" != install ]; then
+  have emacs || die "emacs not found; run ./setup.sh first"
+  [ -e "$TARGET/init.el" ] || die "$TARGET is not set up; run ./setup.sh first"
+  if [ "$MODE" = doctor ]; then
+    batch_emacs '(my/doctor)' 2>/dev/null
+    exit 0
+  fi
+  step "Updating the config repo"
+  repo="$(cd "$TARGET" && pwd -P)"
+  if [ -d "$repo/.git" ]; then
+    if git -C "$repo" diff --quiet && git -C "$repo" diff --cached --quiet; then
+      run git -C "$repo" pull --ff-only || warn "git pull failed; continuing with the local version"
+    else
+      warn "you have local changes in $repo; not pulling (commit or stash them first)"
+    fi
+  fi
+  step "Upgrading packages (a snapshot is saved first; M-x my/rollback undoes it)"
+  if [ "$DRY" = 1 ]; then echo "  + emacs --batch ... (my/upgrade)"
+  else batch_emacs '(my/upgrade)' 2>&1 | grep -E "snapshot|Upgrad|Failed|Error|done" || true; fi
+  ok "done. Restart Emacs. Check with: ./setup.sh --doctor"
+  exit 0
+fi
 
 # ---------------------------------------------------------------- platform
 OS="$(uname -s)"

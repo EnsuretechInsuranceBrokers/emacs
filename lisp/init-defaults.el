@@ -123,7 +123,7 @@
 
 ;;;; macOS / daemon: get $PATH from your shell so gopls, clangd, node... are found.
 (use-package exec-path-from-shell
-  :if (or (memq window-system '(mac ns)) (daemonp))
+  :if (and (or (memq window-system '(mac ns)) (daemonp)) (package-installed-p 'exec-path-from-shell))
   :demand t
   :config
   (setq exec-path-from-shell-arguments '("-l"))

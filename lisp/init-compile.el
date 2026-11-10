@@ -46,6 +46,21 @@ With a prefix ARG, always ask for the command."
       (call-interactively #'compile)
     (recompile)))
 
+;;;; Which C-family language is this buffer?
+(defun my/c-like-kind-from-name ()
+  "`c++' or `c', judging by the file extension."
+  (if (and buffer-file-name
+           (string-match-p "\\.\\(?:cc\\|cpp\\|cxx\\|c\\+\\+\\|hh\\|hpp\\|hxx\\|inl\\)\\'"
+                           buffer-file-name))
+      'c++
+    'c))
+
+(defun my/c-like-kind ()
+  "`c', `c++' or nil for this buffer (works for simpc-mode too)."
+  (cond ((derived-mode-p 'c++-mode 'c++-ts-mode) 'c++)
+        ((derived-mode-p 'c-mode 'c-ts-mode) 'c)
+        ((derived-mode-p 'simpc-mode) (my/c-like-kind-from-name))))
+
 ;;;; Default compile-command for files without a build system
 (defun my/default-compile-command ()
   "Pick a compile command for this buffer from what is in its directory."
@@ -59,9 +74,9 @@ With a prefix ARG, always ask for the command."
        ((funcall in "build.sh") "./build.sh")
        ((funcall in "Makefile") "make -k ")
        ((funcall in "CMakeLists.txt") "cmake -S . -B build && cmake --build build -j")
-       ((derived-mode-p 'c-mode 'c-ts-mode)
+       ((eq (my/c-like-kind) 'c)
         (format "gcc -Wall -Wextra -g -o %s %s && ./%s" e f e))
-       ((derived-mode-p 'c++-mode 'c++-ts-mode)
+       ((eq (my/c-like-kind) 'c++)
         (format "g++ -std=c++20 -Wall -Wextra -g -o %s %s && ./%s" e f e))))))
 
 (defun my/set-compile-command ()
@@ -72,7 +87,7 @@ With a prefix ARG, always ask for the command."
 
 ;; `hack-local-variables-hook' runs after .dir-locals.el is applied, so a
 ;; project's own command always wins.
-(dolist (hook '(c-mode-hook c-ts-mode-hook c++-mode-hook c++-ts-mode-hook))
+(dolist (hook '(c-mode-hook c-ts-mode-hook c++-mode-hook c++-ts-mode-hook simpc-mode-hook))
   (add-hook hook
             (lambda ()
               (add-hook 'hack-local-variables-hook #'my/set-compile-command nil t))))
@@ -117,8 +132,8 @@ With a prefix ARG, always ask for the command."
   (save-buffer)
   (let* ((f (shell-quote-argument buffer-file-name))
          (cmd (cond
-               ((derived-mode-p 'c++-mode 'c++-ts-mode) nil)
-               ((derived-mode-p 'c-mode 'c-ts-mode)
+               ((eq (my/c-like-kind) 'c++) nil)
+               ((eq (my/c-like-kind) 'c)
                 (let ((exe (shell-quote-argument (file-name-sans-extension buffer-file-name))))
                   (format "gcc -Wall -Wextra -g -o %s %s && %s" exe f exe)))
                ((derived-mode-p 'go-mode 'go-ts-mode) (format "go run %s" f))

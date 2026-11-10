@@ -38,7 +38,7 @@
 ;;;; Terminal
 ;; vterm is a real terminal (needs cmake + libtool to build the first time).
 (use-package vterm
-  :if (and module-file-suffix (not (eq system-type 'windows-nt)))
+  :if (and module-file-suffix (not (eq system-type 'windows-nt)) (package-installed-p 'vterm))
   :commands (vterm vterm-other-window)
   :config
   (setq vterm-max-scrollback 10000
@@ -80,6 +80,10 @@
         '(("t" "Todo" entry (file "") "* TODO %?\n  %U\n  %a")
           ("n" "Note" entry (file "") "* %?\n  %U"))))
 (setq org-directory "~/org/")
+
+;;;; Autocommit: git-backed notes (rexim's autocommit idea).  See my-autocommit.el.
+;; M-x my/autocommit-init RET ~/org/ RET once; every save is then committed and pushed.
+(require 'my-autocommit)
 
 ;;;; Server: `emacsclient file.c' opens in this Emacs instantly.
 ;; For zero startup time run Emacs as a daemon: `emacs --daemon', then

@@ -7,7 +7,6 @@
       c-basic-offset 4
       c-ts-mode-indent-offset 4
       c-ts-mode-indent-style 'k&r)
-(add-to-list 'auto-mode-alist '("\\.h\\'" . c-mode))   ; .h is C unless you say otherwise
 (with-eval-after-load 'cc-mode
   (keymap-set c-mode-base-map "C-c C-o" #'ff-find-other-file)) ; .c <-> .h
 (with-eval-after-load 'c-ts-mode
@@ -59,6 +58,26 @@
 (use-package dockerfile-mode :defer t)
 (add-to-list 'auto-mode-alist '("\\.env\\'" . conf-mode))
 (add-to-list 'auto-mode-alist '("\\.env\\..*\\'" . conf-mode))
+
+;;;; More languages.  Each one costs nothing until you open such a file.
+;; Turn the whole group off with (setq my/extra-languages nil) in personal.el.
+(defcustom my/extra-languages t
+  "Install modes for Rust, Zig, Lua, Haskell, Kotlin, GLSL, CMake, TOML..."
+  :type 'boolean :group 'my)
+
+(when my/extra-languages
+  (use-package rust-mode :defer t
+    :config (setq rust-format-on-save nil))      ; apheleia formats with rustfmt
+  (use-package zig-mode :defer t)
+  (use-package lua-mode :defer t)
+  (use-package haskell-mode :defer t
+    :hook (haskell-mode . interactive-haskell-mode))
+  (use-package kotlin-mode :defer t)
+  (use-package glsl-mode :defer t)
+  (use-package cmake-mode :defer t)
+  (use-package csv-mode :defer t)
+  (use-package nginx-mode :defer t)
+  (use-package graphviz-dot-mode :defer t))   ; TOML, Bash, CSS...: tree-sitter modes via treesit-auto
 
 ;;;; Shell
 (setq sh-basic-offset 4)

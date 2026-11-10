@@ -3,7 +3,10 @@
 A fast, keyboard-first Emacs config in the rexim / Tsoding style:
 gruber-darker, Iosevka, instant buffer and file switching, and a
 compile-driven "edit, build, run" loop. It's plain Emacs 29+ (no Doom),
-built from my old Doom config. A tidied Doom version is in [`doom/`](doom/).
+built from my old Doom config plus everything useful in
+[rexim's own config](https://github.com/rexim/dotfiles). It's made to last:
+health checks, safe upgrades with rollback, and tests that run every week
+on several Emacs versions. A tidied Doom version is in [`doom/`](doom/).
 
 - [One-command setup](#one-command-setup)
 - [What the script does](#what-the-script-does)
@@ -11,7 +14,10 @@ built from my old Doom config. A tidied Doom version is in [`doom/`](doom/).
 - [Getting fast](#getting-fast): the part that actually matters
 - [Key reference](#key-reference)
 - [Languages](#languages)
+- [What's from rexim's config](#whats-from-rexims-config)
+- [Notes that back themselves up](#notes-that-back-themselves-up)
 - [Customizing](#customizing)
+- [Keeping it working for decades](#keeping-it-working-for-decades)
 - [Troubleshooting](#troubleshooting)
 
 ---
@@ -53,6 +59,8 @@ Common variants:
 | `--no-emacs` `--no-tools` `--no-font` `--no-lsp` `--no-packages` | Skip that step |
 | `-y` | Don't ask before using `sudo` |
 | `--dry-run` | Print, don't run |
+| `--update` | Later on: pull this repo, snapshot packages, upgrade them, update grammars |
+| `--doctor` | Print a health report (what's installed, what's missing) and exit |
 
 You can re-run it any time: steps that are already done are skipped.
 Supports macOS (Homebrew), Ubuntu/Debian, Fedora, Arch and openSUSE.
@@ -260,7 +268,7 @@ are on the `SPC` leader (see [below](#leader-spc-with-evil-c-c-spc-without)).
 | `C-c c` | `compile` (asks, remembers) |
 | `C-c r` / `F5` | Recompile, no questions |
 | `C-c x` | Run this file (C++ + `input.txt`, C, Go, Python, PHP, JS, sh) |
-| `C-c i` | Open `input.txt` next to this file |
+| `C-c i i` | Open `input.txt` next to this file |
 | `M-g n` / `M-g p` | Next / previous error |
 | `C-x p c` | Compile from the project root |
 | `C-x p a` | `php artisan …` (with completion) |
@@ -274,7 +282,23 @@ Default `compile-command`: `nob.c` → `./nob`, else `build.sh`, `Makefile`,
 ((nil . ((compile-command . "make -j && ./main"))))
 ```
 
-Snippets (type the word, then `TAB`): `cp` (competitive programming template), `main`, `nob`.
+Snippets (type the word, then `TAB`): `cp` (competitive programming template),
+`main`, `nob`, and for C/C++ `for`, `fori`, `if`, `ife`, `elif`, `while`, `sw`,
+`st` (typedef struct), `inc`, `incq`, `once` (include guard), `pr` (printf), `todo`.
+
+### rexim's own keys
+
+| Key | Does |
+|---|---|
+| `C-x C-g` | Open the file or URL at point |
+| `C-c i m` | Functions in this file (imenu) |
+| `C-c m s` / `C-c m l` | magit status / log |
+| `C-c M-q` | Unfill: join a paragraph into one line |
+| `C-c s` | Search the project for the selection (or symbol at point) |
+| `C-c T` | Insert a timestamp `(20261110-130512)` |
+| `C-c C-j` | In Emacs Lisp: evaluate and print the result below |
+| `M-x my/copy-org-link-here` | Copy an org link to this file and line |
+| `M-x my/toggle-transparency` | Make the frame see-through |
 
 ### Code (when a language server is running)
 
@@ -317,7 +341,67 @@ grammars are installed by `setup.sh`, or offered on first use.
 | PHP / Laravel | intelephense (phpactor fallback) | Blade files use web-mode, `C-x p a` runs artisan |
 | Python | basedpyright / pyright / pylsp | |
 | JS / TS | typescript-language-server | |
-| Web, JSON, YAML, Markdown, Nix, Docker, sh | modes only | |
+| Rust | rust-analyzer | |
+| Zig | zls | |
+| Lua, Haskell | lua-language-server, haskell-language-server | if installed |
+| Web, JSON, YAML, TOML, Markdown, Nix, Docker, CMake, Kotlin, GLSL, CSV, nginx, Graphviz, sh | modes only | |
+
+C/C++ formatting only runs when the project has a `.clang-format` file.
+Without one, clang-format's default style would rewrite your whole file on
+every save. Big files (over 256 KB) never start a language server, never get
+formatted, and C/C++ ones open in simpc-mode.
+
+## What's from rexim's config
+
+I read through [rexim/dotfiles](https://github.com/rexim/dotfiles)
+(`.emacs`, `.emacs.rc/*.el`, `.emacs.local/`, `.emacs.snippets/`). His
+dotfiles repo has no license, so nothing is copied from it: the ideas are
+written fresh here. The one exception is **simpc-mode**, his fast C mode,
+which has its own MIT-licensed repo and is bundled in `site-lisp/simpc-mode/`
+with its license.
+
+| rexim has | Here |
+|---|---|
+| gruber-darker, Iosevka 20, no tool/menu/scroll bars | same |
+| relative line numbers everywhere | same, in code/text/config buffers |
+| ido + smex for files, buffers, `M-x` | vertico + orderless + consult (same feel, works for every prompt, live preview) |
+| company | corfu (lighter, same idle completion) |
+| multiple-cursors with `C->` `C-<` `C-c C-<` `C-S-c C-S-c` `C-"` `C-:` | same keys |
+| move-text on `M-p` / `M-n` | same, plus re-indent after moving |
+| `C-,` duplicate line | same (Emacs 29's `duplicate-dwim`, also does regions) |
+| `simpc-mode` for all C/C++ | `my/c-mode`: `auto` (default) uses tree-sitter/cc-mode, and simpc for files over 256 KB. `simpc` = exactly rexim |
+| whitespace-mode in code, trailing space deleted on save | `my/whitespace-style`: `light` (default) or `rexim` (dots for every space, like his streams) |
+| `compile` with ANSI colours, `compilation-scroll-output` | same, plus `C-c r` recompile and smart default commands |
+| dired-x, `dired-dwim-target`, `-alh` | same, plus directories first and one dired buffer at a time |
+| windmove on `S-<arrows>` | same |
+| paredit in Lisp buffers, `C-c C-j` eval-print | same (paredit leaves `M-s`/`M-?` alone) |
+| yasnippet with his own snippets | yasnippet with similar C snippets written fresh (`for`, `if`, `once`…) |
+| `C-x C-g` ffap, `C-c i m` imenu, `C-c m s`/`l` magit, `C-c M-q` unfill | same keys |
+| `C-x p d` timestamp, `C-x p s` rgrep selection | moved to `C-c T` and `C-c s`, because Emacs 28+ uses `C-x p` for projects |
+| org agenda/capture | `C-c o a` / `C-c o c` (his `C-c c` is compile here) |
+| autocommit-rc.el (git-synced agenda) | `my/autocommit-mode`, rewritten: see below |
+| magit, editorconfig, many language modes | same, lazily loaded |
+| haskell, rust, lua, nix, go, php, kotlin, glsl, cmake, … modes | same (`my/extra-languages`) |
+
+Left out on purpose: helm (replaced by consult), his toy-language modes
+(porth, basm, noq, jai…), Coq/Proof General, tide (eglot does TypeScript), and
+`confirm-kill-emacs` (your Doom config turned it off).
+
+## Notes that back themselves up
+
+rexim keeps his agenda in a git repo that commits and pushes on every save.
+Here that's `my/autocommit-mode`:
+
+```
+M-x my/autocommit-init RET ~/org/ RET
+```
+
+After that, every file under `~/org/` commits a few seconds after you save. Ten
+quick saves make one commit, and it pushes in the background. When you open the
+first file there in a session, it pulls first. Offline? Run
+`M-x my/autocommit-toggle-push` to commit without pushing. It adds itself to
+`.dir-locals.el` without touching what's already there. If a run fails, the
+git output is in the ` *autocommit*` buffer.
 
 ## Customizing
 
@@ -329,6 +413,19 @@ Put machine-local settings in `personal.el` (git-ignored, loaded before everythi
       my/font-size 18
       my/start-server nil)
 ```
+
+| Option | Default | What it does |
+|---|---|---|
+| `my/use-evil` | `nil` | Vim keys + `SPC` leader |
+| `my/fonts`, `my/font-size` | Iosevka, 20 | First installed font wins |
+| `my/c-mode` | `auto` | `auto` / `simpc` (rexim) / `cc` |
+| `my/c-big-file-size` | 256 KB | Above this: simpc, no LSP, no formatting, no whitespace-mode |
+| `my/whitespace-style` | `light` | `light` / `rexim` / `nil` |
+| `my/use-paredit` | `t` | Structural editing in Lisp buffers |
+| `my/extra-languages` | `t` | Rust, Zig, Lua, Haskell, Kotlin… modes |
+| `my/start-server` | `t` | So `emacsclient` opens files in this Emacs |
+| `my/autocommit-delay`, `my/autocommit-push` | 5 s, `t` | Autocommit tuning |
+| `my/snapshots-keep` | 5 | Package snapshots kept by `my/upgrade` |
 
 Everything else is one topic per file in `lisp/`:
 
@@ -346,16 +443,52 @@ lisp/init-evil.el      optional Vim layer
 lisp/init-dev.el       eglot, tree-sitter, flymake, apheleia, dape
 lisp/init-compile.el   compile loop, run-file, CP, artisan
 lisp/init-langs.el     per-language settings
+lisp/init-rexim.el     rexim's habits: simpc, whitespace, paredit, his keys
 lisp/init-git.el       magit, diff-hl
 lisp/init-tools.el     dired, vterm, docker, org, server
 lisp/init-keys.el      global keys + leader map
+lisp/init-maint.el     doctor, snapshots, upgrade, rollback
+lisp/my-autocommit.el  commit-on-save for notes repos
+site-lisp/simpc-mode/  rexim's simpc-mode (MIT, with its LICENSE)
 snippets/              your yasnippets
+test/                  smoke tests (./test/run.sh)
 doom/                  the Doom version of this config
 ```
 
-Update packages with `M-x package-upgrade-all`. To profile startup, set
-`use-package-compute-statistics` to `t` in `init-package.el`, restart, then run
-`M-x use-package-report`. Emacs prints its startup time in the echo area.
+To add a package, put a `use-package` block in the right `lisp/` file. It
+installs on the next start, and if it ever fails to install, the block is
+skipped instead of breaking Emacs.
+
+## Keeping it working for decades
+
+Packages change, Emacs changes, machines change. These are the habits and
+tools that keep the config alive:
+
+| When | Do | What it does |
+|---|---|---|
+| Every month or two | `./setup.sh --update` (or `M-x my/upgrade`) | Pulls this repo, **snapshots** the installed packages, upgrades everything, updates grammars |
+| An upgrade broke something | `M-x my/rollback` | Puts the previous snapshot back and restarts Emacs. The broken set is kept in `elpa.broken/` |
+| Something feels off | `./setup.sh --doctor` (or `M-x my/doctor`) | Lists Emacs features, missing packages, grammars, language servers and tools, each with a fix |
+| Startup got slow | `M-x my/benchmark-startup` | Times a clean load. Then set `use-package-compute-statistics` to `t`, restart, `M-x use-package-report` |
+| You changed the config | `make test` | Loads the config and runs the smoke tests (C modes, compile commands, keys, autocommit…) |
+| New machine | `./setup.sh` | Same setup in one command |
+| New Emacs release | nothing | CI already tests it every week |
+
+**CI.** `.github/workflows/ci.yml` installs every package from scratch on Emacs
+29, 30 and the development snapshot, runs the tests, byte-compiles the config
+and shellchecks the scripts. It does this on every push and every Monday, so
+when an upstream package breaks or Emacs changes, you hear about it from a
+red check, not from a broken editor on a deadline.
+
+**Rules that keep it maintainable:**
+
+- One topic per file in `lisp/`. Machine-specific settings go only in `personal.el`.
+- Prefer built-ins (eglot, project.el, tree-sitter, which-key in 30, editorconfig
+  in 30). They don't disappear.
+- Every package is lazy and optional. If one dies upstream, delete its block
+  and nothing else breaks.
+- Commit `personal.example.el` changes and keep secrets out of the repo.
+- `make` lists the shortcuts: `make update`, `make doctor`, `make test`, `make clean`.
 
 ### Using Doom instead
 
@@ -376,4 +509,8 @@ longer errors before LSP starts, and `SPC j` (avy) and `-` (dired) are added.
 | Popup completion missing in a terminal | Works in GUI. In `emacs -nw` on Emacs < 31 it uses corfu-terminal |
 | Font isn't Iosevka | `fc-list \| grep -i iosevka`; set `my/fonts` in `personal.el` |
 | Something's broken after editing config | `emacs --debug-init` shows the exact error |
-| Start over | `rm -rf ~/.config/emacs/{elpa,eln-cache,var}` and start Emacs |
+| Upgrade broke something | `M-x my/rollback`, pick the latest snapshot |
+| Not sure what's wrong | `./setup.sh --doctor` |
+| Huge C file is slow | It should open in simpc-mode (check the mode line). Lower `my/c-big-file-size` |
+| clang-format didn't run | Add a `.clang-format` to the project (`clang-format -style=llvm -dump-config > .clang-format`) |
+| Start over | `make clean` (packages and caches; keeps history) and start Emacs |
