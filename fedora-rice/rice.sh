@@ -268,7 +268,7 @@ if [ "$DO_DOTFILES" = 1 ]; then
   line='[ -r ~/.config/zsh/rice.zsh ] && source ~/.config/zsh/rice.zsh   # fedora-rice/rice.sh'
   if ! grep -qF "config/zsh/rice.zsh" "$HOME/.zshrc" 2>/dev/null; then
     if [ "$DRY" = 1 ]; then echo "  + echo '$line' >> ~/.zshrc"; else echo "$line" >> "$HOME/.zshrc"; fi
-    ok "~/.zshrc sources rice.zsh"
+    ok "$HOME/.zshrc sources rice.zsh"
   fi
 fi
 

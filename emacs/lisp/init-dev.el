@@ -21,7 +21,10 @@
 (use-package treesit-auto
   :demand t
   :config
-  (setq treesit-auto-install 'prompt
+  ;; Ask before installing a missing grammar, but never in batch mode
+  ;; (setup.sh, tests, the monthly update): there's no one to answer, and a
+  ;; y/n prompt there aborts setting up the file's major mode.
+  (setq treesit-auto-install (if noninteractive nil 'prompt)
         ;; Only grammars for languages you actually use (each is 0.5-5 MB).
         treesit-auto-langs '(c cpp go gomod python javascript typescript tsx
                              php json yaml bash rust toml css html dockerfile

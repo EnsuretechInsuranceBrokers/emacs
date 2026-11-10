@@ -71,7 +71,7 @@ while [ $# -gt 0 ]; do
 done
 
 # ---------------------------------------------------------------- helpers
-if [ -t 1 ]; then B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' N=$'\e[0m'; else B= G= Y= R= N=; fi
+if [ -t 1 ]; then B=$'\e[1m' G=$'\e[32m' Y=$'\e[33m' R=$'\e[31m' N=$'\e[0m'; else B='' G='' Y='' R='' N=''; fi
 step() { echo; echo "${B}==> $*${N}"; }
 ok()   { echo "  ${G}✓${N} $*"; }
 warn() { echo "  ${Y}!${N} $*"; }
@@ -259,7 +259,12 @@ if [ "$DO_FONT" = 1 ]; then
   step "Iosevka font"
   font_installed() {
     if have fc-list; then fc-list 2>/dev/null | grep -qi iosevka
-    else ls "$HOME/Library/Fonts" /Library/Fonts 2>/dev/null | grep -qi iosevka; fi
+    else
+      for f in "$HOME"/Library/Fonts/*[Ii]osevka* /Library/Fonts/*[Ii]osevka*; do
+        [ -e "$f" ] && return 0
+      done
+      return 1
+    fi
   }
   if font_installed; then
     ok "already installed"
@@ -314,7 +319,7 @@ if [ "$DO_LSP" = 1 ]; then
   if have go; then
     have gopls   || try go install golang.org/x/tools/gopls@latest
     have gofumpt || try go install mvdan.cc/gofumpt@latest
-    ok "Go: gopls, gofumpt (in $(go env GOPATH 2>/dev/null || echo '~/go')/bin)"
+    ok "Go: gopls, gofumpt (in $(go env GOPATH 2>/dev/null || echo "$HOME/go")/bin)"
   else
     warn "Go not installed: skipping gopls"
   fi
