@@ -16,6 +16,8 @@ on several Emacs versions. Tuned hard for [speed and disk space](#speed-and-disk
 - [One-command setup](#one-command-setup)
 - [What the script does](#what-the-script-does)
 - [Manual install](#manual-install)
+- [macOS and Fedora](#macos-and-fedora): **what to change on Fedora**
+- [Multiple cursors and line numbers](#multiple-cursors-and-line-numbers)
 - [Coming from Neovim](#coming-from-neovim)
 - [Getting fast](#getting-fast): the part that actually matters
 - [Key reference](#key-reference)
@@ -68,6 +70,7 @@ Common variants:
 | `--dry-run` | Print, don't run |
 | `--update` | Later on: pull this repo, snapshot packages, upgrade them, update grammars |
 | `--doctor` | Print a health report (what's installed, what's missing) and exit |
+| `--platform fedora` / `--platform macos` | Switch `lisp/init-platform.el` to that block and exit. A normal run does it by itself |
 
 You can re-run it any time: steps that are already done are skipped.
 Supports macOS (Homebrew), Ubuntu/Debian, Fedora, Arch and openSUSE.
@@ -112,6 +115,102 @@ Install `ripgrep` and `fd` and start `emacs`. Packages install on the first star
 installs the rest on the next start.
 
 ---
+
+## macOS and Fedora
+
+The config is set up for **macOS**. Everything specific to one system lives in
+**one file**, [`lisp/init-platform.el`](lisp/init-platform.el), in two marked
+blocks:
+
+```elisp
+;;;; >>> MACOS BEGIN =====================   <- active (code)
+(setq my/font-size 16)
+...
+;;;; <<< MACOS END =======================
+
+;;;; >>> FEDORA BEGIN ====================   <- commented out
+;; (setq my/font-size 20)
+...
+;;;; <<< FEDORA END ======================
+```
+
+### On your Fedora machine: what to change
+
+`setup.sh` does it for you: on Linux it switches the file to the Fedora block
+by itself. To do it by hand instead:
+
+- [ ] Open `emacs/lisp/init-platform.el`.
+- [ ] **Comment out** every line between `>>> MACOS BEGIN` and `<<< MACOS END`
+      (put `;; ` in front). With Vim keys: `V` to select the lines, then `gc`.
+      With Emacs keys: select them, then `M-;`.
+- [ ] **Uncomment** every line between `>>> FEDORA BEGIN` and `<<< FEDORA END`
+      (remove the `;; `).
+- [ ] Restart Emacs. `M-x my/doctor` (or the startup message) confirms which block is active.
+
+Or let the script do exactly that:
+
+```bash
+./setup.sh --platform fedora      # and --platform macos to go back
+```
+
+That's the only change. No other file has macOS or Fedora settings, and
+`./setup.sh --update` (and the monthly Fedora timer) keeps your choice: it
+switches back to the committed version just to pull, then restores the Fedora block.
+
+### What differs
+
+| Setting | macOS block (active) | Fedora block |
+|---|---|---|
+| Font size | 16 (Retina) | 20 (rexim's Iosevka-20) |
+| Modifier keys | Cmd = Meta, Option = Super, right Option types accents, fn = Hyper | Alt = Meta, Super = Super |
+| Add a cursor | **Option-click** | **Alt-click** |
+| Cursor above / below | **Cmd-Option-Up / Down** | **Ctrl-Alt-Up / Down** |
+| Box select → cursors | **Shift-Option-drag** | **Shift-Alt-drag** |
+| Window | dark transparent title bar, fast (non-native) fullscreen | normal GNOME title bar |
+| Typing lag fix | n/a | `pgtk-wait-for-event-timeout` for Fedora's Wayland (pure-GTK) Emacs |
+| Trash | `~/.Trash` (Finder) | GNOME Trash |
+| `M-x locate` | Spotlight (`mdfind`) | `plocate` |
+| Shell `PATH` | copied from your login shell (Dock apps don't get it) | GNOME already provides it |
+| dired's `ls` | `gls` from brew coreutils | GNU `ls` |
+
+`setup.sh` installs what each side needs: emacs-plus, coreutils (gls) and the
+rest with Homebrew on macOS; with dnf on Fedora, including plocate.
+
+## Multiple cursors and line numbers
+
+Two editing features from rexim's setup, made to feel like VSCode.
+
+**Multiple cursors.** Click to add cursors anywhere, type once and every cursor types.
+
+| Do | macOS | Fedora | Same everywhere |
+|---|---|---|---|
+| Add / remove a cursor where you click | Option-click | Alt-click | Ctrl-Shift-click |
+| Add a cursor on the line above / below | Cmd-Option-Up / Down | Ctrl-Alt-Up / Down | |
+| Box-select with the mouse → a cursor on every line | Shift-Option-drag | Shift-Alt-drag | |
+| A cursor on every line of the selection | | | `C-S-c C-S-c` (rexim's favourite) |
+| Next / previous match too (VSCode Ctrl+D) | | | `C->` / `C-<` |
+| Every match (VSCode Ctrl+Shift+L) | | | `C-c C-<` |
+| Skip this match | | | `C-"` / `C-:` |
+| Back to one cursor | | | `Esc` or `C-g` |
+
+`RET` types a newline at every cursor, as in VSCode. With Vim keys on, the
+cursors type in Emacs state, and when you press `Esc` you're back in normal
+mode. In visual mode, `V` + `j j j` then `C-S-c C-S-c` gives a cursor per line.
+
+**Line numbers.** Relative numbers counting up and down from the cursor, with
+the cursor's own line showing its real number (bold yellow):
+
+```
+  2  int total = 0;
+  1  for (int i = 0; i < n; i++) {
+ 42      total += a[i];        <- cursor is on line 42
+  1  }
+  2  return total;
+```
+
+So `2j`, `5k` or `C-u 5 C-n` land exactly where you're looking, and you always
+see the real line number for compiler errors. On in every buffer except
+terminals, images and huge files. `SPC t l` toggles them in one buffer.
 
 ## Coming from Neovim
 
@@ -296,7 +395,8 @@ Vim keys on, the same commands are on the `SPC` leader (see
 
 | Key | Does |
 |---|---|
-| `C->` `C-<` `C-c C-<` | Multiple cursors: next / previous / all like this |
+| `C->` `C-<` `C-c C-<` | Multiple cursors: next / previous / all like this ([more](#multiple-cursors-and-line-numbers)) |
+| Option-click (macOS) / Alt-click (Fedora) | Add a cursor where you click |
 | `C-S-c C-S-c` | A cursor on every line of the region |
 | `M-p` / `M-n` | Move line or region up / down |
 | `C-,` | Duplicate line or region |
@@ -424,9 +524,9 @@ bundled either). Everything here is written for this config.
 | Idea | Here |
 |---|---|
 | gruber-darker, Iosevka 20, no tool/menu/scroll bars | same |
-| relative line numbers | same |
+| relative line numbers, real number on the cursor line | same, in every buffer except terminals and huge files |
 | ido + smex for files, buffers, `M-x` | vertico + orderless + consult: same feel, every prompt, live preview |
-| multiple-cursors on `C->` `C-<` `C-c C-<` `C-S-c C-S-c` `C-"` `C-:` | same keys |
+| multiple-cursors on `C->` `C-<` `C-c C-<` `C-S-c C-S-c` `C-"` `C-:` | same keys, plus VSCode-style Option/Alt-click, cursor above/below and box-drag |
 | move-text on `M-p` / `M-n`, duplicate line on `C-,` | same, plus re-indent after moving, duplicate regions too |
 | a tiny fast C mode | our own `fast-c-mode`, with better indentation (braceless bodies, parens, labels) |
 | whitespace-mode in code | `my/whitespace-style`: `light` (default) or `dots` (every space as a dot) |
@@ -533,6 +633,7 @@ lisp/init-evil.el      Vim keys (on by default), SPC leader
 lisp/init-dev.el       eglot, tree-sitter, flymake, apheleia, dape
 lisp/init-compile.el   compile loop, run-file, CP, artisan
 lisp/init-langs.el     per-language settings
+lisp/init-platform.el  THE macOS / Fedora file (switch blocks here)
 lisp/init-workflow.el  C mode choice, whitespace, paredit, helpers
 lisp/fast-c-mode.el    our own fast C/C++ mode
 lisp/init-git.el       magit, diff-hl

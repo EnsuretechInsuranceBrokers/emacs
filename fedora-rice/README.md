@@ -26,7 +26,7 @@ every command and changes nothing.
 | **Keyboard** | Caps Lock → Ctrl (your other keyboard options are kept). `Super+Return` terminal, `Super+E` Emacs, `Super+1..4` workspaces, `Super+Shift+1..4` move window, `Super+Q` close, `Super+F` fullscreen. 4 fixed workspaces |
 | **Shell** | zsh as login shell, with Emacs-style line editing (same keys you're learning), a prompt that shows the git branch, `z` to jump to directories, `C-r` fuzzy history, `C-t` fuzzy files, `e file` opens in Emacs |
 | **git** | delta for diffs, `zdiff3` conflicts, `pull.ff only`, auto upstream on first push, rerere, histogram diffs. Only for settings you haven't already set |
-| **Emacs** | Runs `emacs/setup.sh --daemon` (the sibling folder, or a fresh clone if this folder was copied on its own): Emacs, Iosevka, language servers, all packages, and Emacs as a background service so `Super+E` opens instantly |
+| **Emacs** | Runs `emacs/setup.sh --daemon` (the sibling folder, or a fresh clone if this folder was copied on its own). That also switches `emacs/lisp/init-platform.el` from its macOS block to the **Fedora block** (Alt-click cursors, font 20, Wayland typing-lag fix…); see [what to change on Fedora](../emacs/README.md#on-your-fedora-machine-what-to-change). Plus: Emacs, Iosevka, language servers, all packages, and Emacs as a background service so `Super+E` opens instantly |
 | **Updates** | systemd timers on the fourth Sunday of every month, below |
 
 Everything it replaces is backed up as `<file>.bak-<date>`. `~/.zshrc` isn't

@@ -6,7 +6,8 @@
 ;; the Emacs keys, switch them off.  C-c v toggles at any time to practise.
 ;; (setq my/use-evil nil)
 
-;; Font: first installed one wins.
+;; Font: first installed one wins.  The default size comes from
+;; lisp/init-platform.el (16 on macOS, 20 on Fedora); setting it here wins.
 ;; (setq my/fonts '("Iosevka" "JetBrains Mono")
 ;;       my/font-size 18)
 

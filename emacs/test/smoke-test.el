@@ -261,6 +261,61 @@
           (should (zerop (call-process "git" nil nil nil "rev-parse" "HEAD"))))
       (delete-directory dir t))))
 
+;;;; Platform file (macOS in git; Fedora by switching blocks)
+(ert-deftest my-test-platform-block ()
+  (should (memq my/platform '(macos fedora)))
+  (should (featurep 'init-platform))
+  (if (eq my/platform 'macos)
+      (progn (should (eq mac-command-modifier 'meta))
+             (should (eq (keymap-global-lookup "s-<mouse-1>") #'mc/add-cursor-on-click)))
+    (should (eq (keymap-global-lookup "M-<mouse-1>") #'mc/add-cursor-on-click))))
+
+(ert-deftest my-test-platform-file-switchable ()
+  ;; Exactly one block active, each line of the other one commented.
+  (let* ((file (expand-file-name "lisp/init-platform.el" user-emacs-directory))
+         (text (with-temp-buffer (insert-file-contents file) (buffer-string))))
+    (should (string-match-p "^;;;; >>> MACOS BEGIN" text))
+    (should (string-match-p "^;;;; >>> FEDORA BEGIN" text))
+    (should (= 1 (with-temp-buffer
+                   (insert text) (goto-char (point-min))
+                   (how-many "^(setq my/platform '"))))))
+
+;;;; Rexim-style editing: line numbers + multiple cursors
+(ert-deftest my-test-line-numbers-hybrid ()
+  (should (eq display-line-numbers-type 'relative))
+  (should display-line-numbers-current-absolute)   ; real number on the cursor line
+  (should my/global-line-numbers-mode)
+  (my-test--with-file "x.py" "a = 1\nb = 2\n"
+    (should display-line-numbers-mode)
+    (should (eq display-line-numbers 'relative)))
+  (with-temp-buffer
+    (eshell-mode)
+    (my/line-numbers-maybe)
+    (should-not display-line-numbers-mode))
+  (should (equal (face-attribute 'line-number-current-line :foreground) "#ffdd33")))
+
+(ert-deftest my-test-multiple-cursors-keys ()
+  (should (commandp #'my/mouse-column-cursors))
+  (skip-unless (package-installed-p 'multiple-cursors))
+  (should (eq (keymap-global-lookup "C-S-c C-S-c") #'mc/edit-lines))
+  (should (eq (keymap-global-lookup "C->") #'mc/mark-next-like-this))
+  (should (eq (keymap-global-lookup "C-S-<mouse-1>") #'mc/add-cursor-on-click)))
+
+(ert-deftest my-test-multiple-cursors-evil ()
+  (skip-unless (and (package-installed-p 'multiple-cursors) (package-installed-p 'evil)))
+  (require 'multiple-cursors)
+  (with-temp-buffer
+    (insert "one\ntwo\nthree\n")
+    (evil-local-mode 1)
+    (evil-normal-state)
+    (goto-char (point-min))
+    (mc/mark-next-lines 1)
+    (should multiple-cursors-mode)
+    (should (eq evil-state 'emacs))          ; cursors type in Emacs state
+    (mc/keyboard-quit)
+    (should-not multiple-cursors-mode)
+    (should (eq evil-state 'normal))))       ; and Vim comes back
+
 ;;;; Speed and disk
 (ert-deftest my-test-deferred-hooks-ran ()
   (should my/first-input-done)

@@ -5,6 +5,7 @@
 #   ./setup.sh --emacs-keys    same, with plain Emacs keys instead of Vim keys
 #   ./setup.sh --minimal       Emacs + core tools + config only
 #   ./setup.sh --dry-run       print what would run, change nothing
+#   ./setup.sh --platform fedora   switch lisp/init-platform.el to Fedora (or: macos)
 #   ./setup.sh --update        later: pull this repo + upgrade packages (with snapshot)
 #   ./setup.sh --doctor        health report: what's installed, what's missing
 #   ./setup.sh --help          all options
@@ -21,7 +22,7 @@ MIN_EMACS=29
 
 # ---------------------------------------------------------------- options
 DO_EMACS=1 DO_TOOLS=1 DO_FONT=1 DO_LSP=1 DO_PACKAGES=1
-EMACS_KEYS=0 DAEMON=0 KEYBOARD=0 DRY=0 YES=0 MODE=install
+EMACS_KEYS=0 DAEMON=0 KEYBOARD=0 DRY=0 YES=0 MODE=install PLATFORM=""
 
 usage() {
   sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
@@ -38,13 +39,18 @@ Options:
   --keyboard      Caps Lock -> Ctrl and a fast key repeat rate (GNOME/macOS)
   --update        pull the config repo, snapshot + upgrade packages, update grammars
   --doctor        print a health report and exit
+  --platform P    switch lisp/init-platform.el to P (macos or fedora) and exit.
+                  A normal run does this by itself: macos on a Mac, fedora on Linux
   -y, --yes       don't ask before using sudo
   --dry-run       print the commands instead of running them
 EOF
 }
 
-for arg in "$@"; do
+while [ $# -gt 0 ]; do
+  arg="$1"; shift
   case "$arg" in
+    --platform=*) MODE=platform PLATFORM="${arg#*=}" ;;
+    --platform) MODE=platform PLATFORM="${1:-}"; [ $# -gt 0 ] && shift ;;
     --evil) : ;;               # default now; kept so old commands still work
     --emacs-keys) EMACS_KEYS=1 ;;
     --minimal) DO_FONT=0 DO_LSP=0 ;;
@@ -85,6 +91,42 @@ SUDO=""
 if [ "$(id -u)" != 0 ] && have sudo; then SUDO="sudo"; fi
 as_root() { if [ -n "$SUDO" ]; then run $SUDO "$@"; else run "$@"; fi; }
 
+# ---------------------------------------------------------------- macOS / Fedora block
+# lisp/init-platform.el has a MACOS block (active in git) and a FEDORA block
+# (commented out).  set_platform comments one and uncomments the other.
+set_platform() {   # set_platform CONFIG-DIR macos|fedora
+  local f="$1/lisp/init-platform.el" on off
+  [ -f "$f" ] || { warn "no $f"; return 0; }
+  case "$2" in
+    macos)  on=MACOS;  off=FEDORA ;;
+    fedora) on=FEDORA; off=MACOS ;;
+    *) die "unknown platform '$2' (use macos or fedora)" ;;
+  esac
+  if [ "$DRY" = 1 ]; then echo "  + switch $f to $2"; return 0; fi
+  awk -v on="$on" -v off="$off" '
+    index($0, ";;;; >>> " on " BEGIN") == 1  { mode = "on";  print; next }
+    index($0, ";;;; >>> " off " BEGIN") == 1 { mode = "off"; print; next }
+    index($0, ";;;; <<< " on " END") == 1 || index($0, ";;;; <<< " off " END") == 1 { mode = ""; print; next }
+    mode == "on"  { sub(/^;; /, ""); print; next }
+    mode == "off" { if ($0 != "" && $0 !~ /^;; /) $0 = ";; " $0; print; next }
+                  { print }
+  ' "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+  rm -f "$1/lisp/init-platform.elc"   # recompiled on the next run / save
+}
+current_platform() {   # current_platform CONFIG-DIR -> macos | fedora
+  if grep -q "^(setq my/platform 'fedora)" "$1/lisp/init-platform.el" 2>/dev/null; then echo fedora
+  else echo macos; fi
+}
+this_platform() { if [ "$(uname -s)" = Darwin ]; then echo macos; else echo fedora; fi; }
+
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
+if [ "$MODE" = platform ]; then
+  conf="$TARGET"; [ -f "$SELF_DIR/init.el" ] && conf="$SELF_DIR"
+  set_platform "$conf" "$PLATFORM"
+  ok "init-platform.el: $PLATFORM block active (restart Emacs)"
+  exit 0
+fi
+
 # ---------------------------------------------------------------- update / doctor
 batch_emacs() {   # batch_emacs ELISP: load the config headless and evaluate ELISP
   emacs --batch --init-directory "$TARGET" \
@@ -100,11 +142,16 @@ if [ "$MODE" != install ]; then
   step "Updating the config repo"
   repo="$(cd "$TARGET" && pwd -P)"
   if git -C "$repo" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    # The Fedora block being active is the one local change we expect: put the
+    # file back to the committed (macOS) state, pull, then switch back.
+    plat="$(current_platform "$repo")"
+    [ "$plat" = macos ] || set_platform "$repo" macos
     if git -C "$repo" diff --quiet && git -C "$repo" diff --cached --quiet; then
       run git -C "$repo" pull --ff-only || warn "git pull failed; continuing with the local version"
     else
       warn "you have local changes in $repo; not pulling (commit or stash them first)"
     fi
+    [ "$plat" = macos ] || set_platform "$repo" "$plat"
   fi
   step "Upgrading packages (a snapshot is saved first; M-x my/rollback undoes it)"
   if [ "$DRY" = 1 ]; then echo "  + emacs --batch ... (my/upgrade)"
@@ -159,7 +206,11 @@ if [ "$DO_EMACS" = 1 ]; then
     ok "Emacs $(emacs_major) already installed"
   else
     case "$PM" in
-      brew)   try brew install --cask emacs ;;
+      brew)   # emacs-plus: the usual macOS build (native-comp, better macOS integration)
+              if [ "$DRY" = 1 ] || brew tap d12frosted/emacs-plus >/dev/null 2>&1; then
+                try brew install emacs-plus@30
+              fi
+              have emacs || try brew install --cask emacs ;;
       apt)
         pkg_install emacs
         if [ "$DRY" = 0 ] && [ "$(emacs_major)" -lt "$MIN_EMACS" ]; then
@@ -191,7 +242,7 @@ if [ "$DO_TOOLS" = 1 ]; then
   case "$PM" in
     brew)   pkg_install git ripgrep fd cmake libtool coreutils direnv pandoc ;;
     apt)    pkg_install git ripgrep fd-find build-essential cmake libtool-bin libvterm-dev direnv curl unzip ;;
-    dnf)    pkg_install git ripgrep fd-find gcc gcc-c++ make cmake libtool libvterm-devel direnv curl unzip ;;
+    dnf)    pkg_install git ripgrep fd-find gcc gcc-c++ make cmake libtool libvterm-devel direnv curl unzip plocate ;;
     pacman) pkg_install git ripgrep fd base-devel cmake libtool libvterm direnv curl unzip ;;
     zypper) pkg_install git ripgrep fd gcc gcc-c++ make cmake libtool libvterm-devel direnv curl unzip ;;
   esac
@@ -292,7 +343,7 @@ fi
 
 # ---------------------------------------------------------------- 5. Config
 step "Config -> $TARGET"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
+SCRIPT_DIR="$SELF_DIR"
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/init.el" ] && [ -d "$SCRIPT_DIR/lisp" ]; then
   REPO="$SCRIPT_DIR"
 else
@@ -302,6 +353,15 @@ else
   REPO="$CLONE_DIR/emacs"
 fi
 ok "repo: $REPO"
+
+# Make lisp/init-platform.el match this machine (macOS block in git; Fedora on Linux).
+want="$(this_platform)"
+if [ "$(current_platform "$REPO")" != "$want" ]; then
+  set_platform "$REPO" "$want"
+  ok "init-platform.el: switched to the $want block (see the top of that file)"
+else
+  ok "init-platform.el: $want block already active"
+fi
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
 backup() {

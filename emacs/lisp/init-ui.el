@@ -30,12 +30,44 @@
 (defun my/font-smaller () (interactive)
   (setq my/font-size (1- my/font-size)) (my/setup-font))
 
-;;;; Line numbers: relative, so "7j"/"C-u 7 C-n" jumps are obvious.
+;;;; Line numbers, like rexim's: the cursor's line shows its real number
+;;;; (bright), every other line shows how far away it is, counting up and down:
+;;;;      3   int x = 0;
+;;;;      2   for (...) {
+;;;;      1       foo();
+;;;;     42       bar();     <- cursor: real line number
+;;;;      1   }
+;;;; So "5j" / "C-u 5 C-n" (or 5k) lands exactly where you're looking.
 (setq display-line-numbers-type 'relative
+      display-line-numbers-current-absolute t ; real number on the cursor's line
       display-line-numbers-width 3
-      display-line-numbers-grow-only t)  ; no jitter when crossing 99 -> 100
-(dolist (hook '(prog-mode-hook conf-mode-hook text-mode-hook))
-  (add-hook hook #'display-line-numbers-mode))
+      display-line-numbers-grow-only t)       ; no jitter when crossing 99 -> 100
+
+(defcustom my/line-numbers-exempt-modes
+  '(vterm-mode eshell-mode term-mode shell-mode compilation-mode
+    image-mode doc-view-mode pdf-view-mode which-key-mode)
+  "Modes without line numbers.  Everywhere else they're on (like rexim)."
+  :type '(repeat symbol) :group 'my)
+
+(defun my/line-numbers-maybe ()
+  "Line numbers in this buffer unless it's a terminal, image, or huge file."
+  (unless (or (minibufferp)
+              (string-prefix-p " " (buffer-name))   ; internal buffers
+              (apply #'derived-mode-p my/line-numbers-exempt-modes)
+              (> (buffer-size) (* 4 my/c-big-file-size)))
+    (display-line-numbers-mode 1)))
+
+(define-globalized-minor-mode my/global-line-numbers-mode
+  display-line-numbers-mode my/line-numbers-maybe
+  :group 'my)
+(my/global-line-numbers-mode 1)
+
+;; Current line number in gruber-darker yellow, bold; the others stay dim.
+(defun my/line-number-faces (&rest _)
+  (set-face-attribute 'line-number-current-line nil
+                      :inherit 'line-number :foreground "#ffdd33" :weight 'bold))
+(my/line-number-faces)
+(add-hook 'enable-theme-functions #'my/line-number-faces)
 
 ;;;; Small things
 (blink-cursor-mode -1)

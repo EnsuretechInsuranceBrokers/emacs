@@ -116,16 +116,11 @@
       search-whitespace-regexp ".*?"     ; "foo bar" matches "foo ... bar"
       isearch-allow-scroll t)
 
-;;;; macOS
-(when (eq system-type 'darwin)
-  (setq mac-command-modifier 'meta      ; Cmd is Meta, like Alt on Linux
-        mac-option-modifier 'super
-        ns-use-proxy-icon nil
-        ns-pop-up-frames nil))
+;;;; macOS / Fedora specifics live in init-platform.el (one file to switch).
 
 ;;;; macOS / daemon: get $PATH from your shell so gopls, clangd, node... are found.
 (use-package exec-path-from-shell
-  :if (and (or (memq window-system '(mac ns)) (daemonp)) (my/package-p 'exec-path-from-shell))
+  :if (and (or my/exec-path-from-shell (daemonp)) (my/package-p 'exec-path-from-shell)) ; init-platform.el
   :demand t
   :config
   (setq exec-path-from-shell-arguments '("-l"))

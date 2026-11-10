@@ -12,6 +12,7 @@
 ;;   lisp/init-*.el      one file per topic
 ;;   lisp/my-*.el        small self-contained features (autocommit)
 ;;   lisp/fast-c-mode.el our own fast C/C++ mode for huge files
+;;   lisp/init-platform.el  THE ONLY macOS/Fedora-specific file: switch there
 ;;   personal.el         your machine-local overrides (git-ignored)
 ;;   test/               smoke tests: ./test/run.sh
 ;;
@@ -54,6 +55,10 @@ Nil: plain Emacs keys, like rexim/Tsoding.  C-c v switches at any time."
 
 ;; Keep M-x customize out of init.el.
 (setq custom-file (expand-file-name "custom.el" my/var-dir))
+
+;; macOS / Fedora settings.  Set up for macOS; on Fedora see the big comment
+;; at the top of lisp/init-platform.el (or run ./setup.sh --platform fedora).
+(require 'init-platform)
 
 ;; Machine-local overrides: fonts, `my/use-evil', secrets.
 (let ((personal (expand-file-name "personal.el" user-emacs-directory)))
