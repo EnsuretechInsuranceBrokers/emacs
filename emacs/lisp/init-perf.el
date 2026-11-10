@@ -56,10 +56,6 @@
 (setq initial-major-mode 'fundamental-mode ; *scratch* without running elisp mode hooks
       inhibit-default-init t               ; skip the system's default.el
       site-run-file nil)                   ; ...and site-start.el (packages come from package.el)
-(unless (eq system-type 'darwin)
-  (setq command-line-ns-option-alist nil))
-(unless (memq initial-window-system '(x pgtk))
-  (setq command-line-x-option-alist nil))
 
 ;;;; Garbage collection
 (defconst my/gc-threshold (* 64 1024 1024)

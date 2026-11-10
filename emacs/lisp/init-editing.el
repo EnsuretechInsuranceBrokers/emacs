@@ -6,15 +6,54 @@
 
 ;;; Code:
 
-;;;; Multiple cursors (rexim's bindings)
+;;;; Multiple cursors, like VSCode (and rexim's bindings)
+;;   Option-click / Alt-click   add (or remove) a cursor        [init-platform.el]
+;;   Cmd-Opt-Up/Down / C-M-Up/Down  add a cursor above/below    [init-platform.el]
+;;   Shift-Option-drag / Shift-Alt-drag  box select -> a cursor per line [init-platform.el]
+;;   C-S-click        add a cursor (same on every system)
+;;   C-S-c C-S-c      a cursor on every line of the selection (rexim's favourite)
+;;   C-> / C-<        add a cursor at the next / previous match (VSCode Ctrl+D)
+;;   C-c C-<          a cursor at every match (VSCode Ctrl+Shift+L)
+;;   C-" / C-:        skip this match
+;;   Esc or C-g       back to one cursor.  RET inserts a newline at every cursor.
+;; With Vim keys on, multiple cursors type in Emacs state and go back to
+;; normal mode when you're done (multiple-cursors doesn't work in normal mode).
 (use-package multiple-cursors
-  :bind (("C-S-c C-S-c" . mc/edit-lines)            ; cursor on every line of the region
+  :bind (("C-S-c C-S-c" . mc/edit-lines)
          ("C->"         . mc/mark-next-like-this)
          ("C-<"         . mc/mark-previous-like-this)
          ("C-c C-<"     . mc/mark-all-like-this)
          ("C-\""        . mc/skip-to-next-like-this)
          ("C-:"         . mc/skip-to-previous-like-this)
-         ("C-S-<mouse-1>" . mc/add-cursor-on-click)))
+         ("C-S-<mouse-1>" . mc/add-cursor-on-click))
+  :config
+  (keymap-set mc/keymap "<escape>" #'mc/keyboard-quit)
+  (keymap-unset mc/keymap "<return>" t)       ; RET types a newline everywhere, like VSCode
+  (add-hook 'multiple-cursors-mode-enabled-hook #'my/mc-evil-enter)
+  (add-hook 'multiple-cursors-mode-disabled-hook #'my/mc-evil-leave))
+
+(defvar-local my/mc-evil-previous-state nil)
+(defun my/mc-evil-enter ()
+  "Multiple cursors start: type in Emacs state (Vim normal mode can't drive them)."
+  (when (bound-and-true-p evil-local-mode)
+    (setq my/mc-evil-previous-state evil-state)
+    (evil-emacs-state)))
+(defun my/mc-evil-leave ()
+  "Multiple cursors end: back to where Vim was (insert stays insert, else normal)."
+  (when (and (bound-and-true-p evil-local-mode) my/mc-evil-previous-state)
+    (evil-change-state (if (eq my/mc-evil-previous-state 'insert) 'insert 'normal))
+    (setq my/mc-evil-previous-state nil)))
+
+(defun my/mouse-column-cursors (event)
+  "Drag a box selection, then put a cursor on each line (VSCode Shift-Alt-drag)."
+  (interactive "e")
+  (mouse-drag-region-rectangle event)
+  (when (and (region-active-p)
+             (/= (line-number-at-pos (region-beginning))
+                 (line-number-at-pos (region-end))))
+    (condition-case nil
+        (progn (rectangle-mark-mode -1) (mc/edit-lines))
+      (error nil))))                          ; no multiple-cursors: keep the box selection
 
 ;;;; Move lines/regions up and down (rexim: M-p / M-n)
 (use-package move-text

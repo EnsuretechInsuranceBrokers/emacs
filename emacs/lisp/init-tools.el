@@ -18,15 +18,9 @@
         dired-vc-rename-file t
         dired-create-destination-dirs 'ask
         dired-clean-confirm-killing-deleted-buffers nil
-        wdired-allow-to-change-permissions t)
-  ;; GNU ls for "directories first" (on macOS: brew install coreutils).
-  (let ((gls (executable-find "gls")))
-    (when (and (eq system-type 'darwin) gls)
-      (setq insert-directory-program gls)))
-  (setq dired-listing-switches
-        (if (or (not (eq system-type 'darwin)) (executable-find "gls"))
-            "-alh --group-directories-first"
-          "-alh")))
+        wdired-allow-to-change-permissions t))
+;; Which `ls' dired uses, and its switches (GNU ls sorts directories first):
+;; see init-platform.el.
 
 (use-package dired-x
   :ensure nil

@@ -43,6 +43,12 @@ jobs:
           if grep -E "Error:" compile.log; then exit 1; fi
       - name: Smoke tests (compiled config, the fast path setup.sh uses)
         run: ./test/run.sh
+      - name: Smoke tests with the Fedora block active
+        run: |
+          ./setup.sh --platform fedora
+          ./test/run.sh
+          ./setup.sh --platform macos
+          git diff --exit-code lisp/init-platform.el   # switching back = exactly what's in git
       - name: Disk usage
         run: |
           emacs --batch --init-directory "$PWD" -l early-init.el -l init.el \
@@ -57,5 +63,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: shellcheck
         run: shellcheck -S warning setup.sh test/run.sh
+      - name: platform switch round trip
+        run: |
+          ./setup.sh --platform fedora && ./setup.sh --platform fedora   # twice: idempotent
+          grep -q "^(setq my/platform 'fedora)" lisp/init-platform.el
+          ./setup.sh --platform macos
+          git diff --exit-code lisp/init-platform.el
       - name: setup.sh dry run
         run: ./setup.sh --dry-run -y --no-packages
