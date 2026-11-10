@@ -1,0 +1,85 @@
+# Loads the config (emacs/) on several Emacs versions, installs every package from
+# the archives, and runs the smoke tests.  Runs on every push and once a
+# week, so a package that breaks upstream (or a new Emacs release) shows
+# up here before it surprises you.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        emacs: ["29.4", "30.1", "snapshot"]
+    continue-on-error: ${{ matrix.emacs == 'snapshot' }}
+    defaults:
+      run:
+        working-directory: emacs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: purcell/setup-emacs@master
+        with:
+          version: ${{ matrix.emacs }}
+      - name: Install packages (first start)
+        run: |
+          emacs --batch --init-directory "$PWD" \
+            -l early-init.el -l init.el 2>&1 | tee install.log
+          if grep -q "Failed to install" install.log; then
+            echo "::error::some packages failed to install"; grep "Failed to install" install.log; exit 1
+          fi
+      - name: Smoke tests (config from source)
+        run: ./test/run.sh
+      - name: Byte-compile config (catches typos and wrong arguments)
+        run: |
+          emacs --batch --init-directory "$PWD" -l early-init.el -l init.el \
+            -f batch-byte-compile lisp/*.el 2>&1 | tee compile.log
+          if grep -E "Error:" compile.log; then exit 1; fi
+      - name: Smoke tests (compiled config, the fast path setup.sh uses)
+        run: ./test/run.sh
+      - name: Smoke tests with the Fedora block active
+        run: |
+          ./setup.sh --platform fedora
+          ./test/run.sh
+          ./setup.sh --platform macos
+          git diff --exit-code lisp/init-platform.el   # switching back = exactly what's in git
+      - name: Disk usage
+        run: |
+          emacs --batch --init-directory "$PWD" -l early-init.el -l init.el \
+            --eval '(princ (my/disk-usage))'
+
+  shell:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: emacs
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: shellcheck -S warning setup.sh test/run.sh ../fedora-rice/rice.sh
+      - name: platform switch round trip
+        run: |
+          ./setup.sh --platform fedora && ./setup.sh --platform fedora   # twice: idempotent
+          grep -q "^(setq my/platform 'fedora)" lisp/init-platform.el
+          ./setup.sh --platform macos
+          git diff --exit-code lisp/init-platform.el
+      - name: setup.sh dry run
+        run: ./setup.sh --dry-run -y --no-packages
+      - name: fedora-rice/rice.sh dry run
+        run: ../fedora-rice/rice.sh --dry-run --force -y
+      - name: systemd units
+        run: |
+          mkdir -p /tmp/units
+          for f in ../fedora-rice/systemd/*; do
+            sed -e "s|@EMACS_DIR@|$PWD|g" -e "s|@RICE_DIR@|$PWD/../fedora-rice|g" "$f" > "/tmp/units/$(basename "$f")"
+          done
+          # dnf / nm-online don't exist on Ubuntu runners; check syntax + calendar only
+          systemd-analyze verify /tmp/units/* 2>&1 | grep -v "is not executable" | tee verify.log
+          if [ -s verify.log ]; then exit 1; fi
+          systemd-analyze calendar "Sun *-*-22..28 03:30:00" --iterations=3

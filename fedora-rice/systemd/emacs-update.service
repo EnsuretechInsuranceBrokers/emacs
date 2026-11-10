@@ -1,0 +1,18 @@
+# Pulls the config repo and upgrades Emacs packages (with a snapshot first,
+# undo with M-x my/rollback).  Installed to ~/.config/systemd/user by
+# fedora-rice/rice.sh, which fills in @EMACS_DIR@ and @RICE_DIR@.
+# Run by hand:  systemctl --user start emacs-update
+# Logs:         journalctl --user -u emacs-update
+[Unit]
+Description=Update Emacs config and packages (fourth Sunday of the month)
+Documentation=file://@RICE_DIR@/README.md
+
+[Service]
+Type=oneshot
+# Wait up to 5 minutes for the network after boot/login.
+ExecStartPre=-/usr/bin/nm-online -q -t 300
+ExecStart=@EMACS_DIR@/setup.sh --update -y
+ExecStopPost=-/bin/sh -c 'if [ "$$SERVICE_RESULT" = success ]; then notify-send -a Emacs "Emacs updated" "Restart Emacs to load the new packages. Undo: M-x my/rollback"; else notify-send -u critical -a Emacs "Emacs update failed" "journalctl --user -u emacs-update"; fi'
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=1h

@@ -1,0 +1,12 @@
+[Unit]
+Description=Upgrade Emacs on the fourth Sunday of every month
+
+[Timer]
+# The fourth Sunday always falls on day 22-28.
+OnCalendar=Sun *-*-22..28 03:30:00
+# Missed it (machine off)?  Run at the next boot.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

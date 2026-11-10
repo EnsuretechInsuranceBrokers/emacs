@@ -1,0 +1,12 @@
+[Unit]
+Description=Update Emacs config and packages on the fourth Sunday of every month
+
+[Timer]
+# 30 minutes after the system upgrade, so packages compile against the new Emacs.
+OnCalendar=Sun *-*-22..28 04:00:00
+# Missed it (logged out / machine off)?  Run at the next login.
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target
