@@ -50,6 +50,7 @@
 (add-to-list 'default-frame-alist '(ns-appearance . dark))
 (setq trash-directory (expand-file-name "~/.Trash")) ; deleting in dired goes to the Finder Trash
 (setq locate-command "mdfind")                   ; M-x locate uses Spotlight
+(setq my/open-command "open")                    ; dired E: open in the default macOS app
 (setq my/exec-path-from-shell t)                 ; Dock-launched Emacs doesn't see your shell PATH
 (setq insert-directory-program (or (executable-find "gls") "ls")) ; GNU ls (brew coreutils) for dired
 (setq dired-listing-switches (if (executable-find "gls") "-alh --group-directories-first" "-alh"))
@@ -71,6 +72,7 @@
 ;; (setq frame-resize-pixelwise t)
 ;; (setq trash-directory nil)                       ; deleting in dired goes to the GNOME Trash
 ;; (setq locate-command "plocate")                  ; M-x locate (dnf install plocate)
+;; (setq my/open-command "xdg-open")                ; dired E: open in the default GNOME app
 ;; (setq my/exec-path-from-shell nil)               ; GNOME already gives Emacs your PATH
 ;; (setq insert-directory-program "ls")             ; Fedora's ls is GNU ls
 ;; (setq dired-listing-switches "-alh --group-directories-first")

@@ -426,6 +426,23 @@ if [ "$DO_PACKAGES" = 1 ]; then
     else
       warn "package step had errors; see $log. Emacs will retry on first start."
     fi
+    # Icon font for dired (nerd-icons): ~2 MB, only if it isn't there yet.
+    icons_installed() {
+      if have fc-list; then fc-list 2>/dev/null | grep -qi "Symbols Nerd Font"; return; fi
+      for f in "$HOME"/Library/Fonts/*SymbolsNerdFont* /Library/Fonts/*SymbolsNerdFont*; do
+        [ -e "$f" ] && return 0
+      done
+      return 1
+    }
+    if [ "$DO_FONT" = 1 ] && ! icons_installed; then
+      if emacs --batch --init-directory "$TARGET" -l "$TARGET/early-init.el" -l "$TARGET/init.el" \
+           --eval '(when (require (quote nerd-icons) nil t) (nerd-icons-install-fonts t))' >>"$log" 2>&1; then
+        have fc-cache && fc-cache -f >/dev/null 2>&1
+        ok "dired icon font (Symbols Nerd Font)"
+      else
+        warn "couldn't install the dired icon font; in Emacs: M-x nerd-icons-install-fonts"
+      fi
+    fi
   fi
 fi
 

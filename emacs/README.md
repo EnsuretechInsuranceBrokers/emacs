@@ -383,7 +383,7 @@ Vim keys on, the same commands are on the `SPC` leader (see
 | `M-g g` | Go to line (with preview) |
 | `C-;` or `M-j` | avy: type 1–2 chars, pause, jump to the label |
 | `M-.` / `M-,` / `M-?` | Definition / back / references |
-| `C-x C-j` | dired here (`-` up, `C-c C-e` rename by editing) |
+| `C-x C-j` | dired here (`-` up, `TAB` expand a folder inline, `P` preview, `/` filter, `)` git info, `E` open in the default app, `C-c C-e` rename by editing; [all dired keys](../README.md#dired-file-manager)) |
 | `M-o` | Next window (pick by letter with 3+) |
 | `S-<arrows>` | Window in that direction |
 | `C-x 2` / `C-x 3` | Split below / right and move there |

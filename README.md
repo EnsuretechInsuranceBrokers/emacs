@@ -155,6 +155,31 @@ terminals, images and files over 1 MB.
 | `C-x C-b` | buffer list, grouped by project |
 | `C-x k` / `C-x K` | close this buffer / close all other file buffers |
 
+## Dired (file manager)
+
+Open it with `-` (Vim normal mode), `C-x C-j` (this file's folder), or `SPC o d`.
+
+| Key | Does |
+|---|---|
+| `RET` / `-` (or `^`) | open file or folder / go up |
+| `TAB` / `S-TAB` | **expand a folder inline as a tree** / cycle how deep |
+| `P` | **preview** the file under the cursor in the other window (as you move) |
+| `/` (Emacs keys) · `F` (Vim keys) | **filter** the list as you type; `g` brings everything back |
+| `)` | show each file's **last git commit** |
+| `(` | show / hide details (size, date, permissions); hidden by default |
+| `E` | open in the default app (macOS `open`, Fedora `xdg-open`) |
+| `C` / `R` / `D` | copy / rename-or-move / delete (to the Trash), in the background |
+| `+` | new folder |
+| `m` / `u` / `U` | mark / unmark / unmark all (`C`, `R`, `D`, `E` act on all marked files) |
+| `C-c C-e` (Emacs) · `i` (Vim) | rename files by editing the text, `C-c C-c` to apply |
+| `C-x M-o` | show / hide dotfiles |
+| `!` / `&` | run a shell command on the file / in the background |
+| drag a file | drag it out of Emacs into another app |
+
+With two dired windows side by side, copy and move default to the other
+window's folder, like a two-pane file manager. Files are coloured by type and
+have icons; `setup.sh` installs the icon font.
+
 ## Windows
 
 | Key | Does |

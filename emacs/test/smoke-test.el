@@ -316,6 +316,45 @@
     (should-not multiple-cursors-mode)
     (should (eq evil-state 'normal))))       ; and Vim comes back
 
+;;;; dired extensions
+(ert-deftest my-test-dired-basics ()
+  (should (commandp #'my/dired-open-externally))
+  (should (equal my/open-command (if (eq my/platform 'macos) "open" "xdg-open")))
+  (should (memq #'dired-hide-details-mode dired-mode-hook))
+  (with-current-buffer (dired-noselect temporary-file-directory)
+    (unwind-protect
+        (progn
+          (should dired-hide-details-mode)
+          (should (eq (keymap-lookup dired-mode-map "E") #'my/dired-open-externally)))
+      (kill-buffer))))
+
+(ert-deftest my-test-dired-extensions ()
+  (skip-unless (and (package-installed-p 'dired-subtree) (package-installed-p 'diredfl)
+                    (package-installed-p 'dired-preview) (package-installed-p 'dired-narrow)
+                    (package-installed-p 'dired-git-info)))
+  (with-current-buffer (dired-noselect temporary-file-directory)
+    (unwind-protect
+        (progn
+          (should diredfl-mode)                               ; colours
+          (should (eq (keymap-lookup dired-mode-map "TAB") #'dired-subtree-toggle))
+          (should (eq (keymap-lookup dired-mode-map "/") #'dired-narrow-fuzzy))
+          (should (eq (keymap-lookup dired-mode-map "P") #'dired-preview-mode))
+          (should (eq (keymap-lookup dired-mode-map ")") #'dired-git-info-mode))
+          (should (bound-and-true-p dired-async-mode)))       ; background copy/move
+      (kill-buffer))))
+
+(ert-deftest my-test-dired-evil-keys ()
+  (skip-unless (and my/use-evil (package-installed-p 'evil-collection)
+                    (package-installed-p 'dired-subtree)))
+  (with-current-buffer (dired-noselect temporary-file-directory)
+    (unwind-protect
+        (progn
+          (evil-normal-state)
+          (should (eq (key-binding (kbd "TAB")) #'dired-subtree-toggle))
+          (should (eq (key-binding (kbd "F")) #'dired-narrow-fuzzy))
+          (should (eq (key-binding (kbd "E")) #'my/dired-open-externally)))
+      (kill-buffer))))
+
 ;;;; Speed and disk
 (ert-deftest my-test-deferred-hooks-ran ()
   (should my/first-input-done)
